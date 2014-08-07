@@ -17,7 +17,10 @@
 #define FALSE 0
 
 class TTYserial {
-	
+// ToDo: Need to add a begin function that takes does what the constructor currently does so that a return
+// value can be checked for success. Also need a default constructor to call. Perhaps change constructor
+// to simple default. 
+
 	private:
 		int BAUD;
 		std::string PORT;

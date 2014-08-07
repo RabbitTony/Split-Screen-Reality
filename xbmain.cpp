@@ -22,14 +22,14 @@ int main(void)
 	xbeeDMapi xb;
 
 	rcvdPacket p;
-	xb.ZeroPktStruct(p);
+	xb.zeroPktStruct(p);
 
 	xb.makeBCpkt();
 	std::vector<uint8_t> d;
 	d.push_back(0x68);
 	d.push_back(0x69);
 	xb.loadBCpkt(d);
-	xb.sendPkt();
+	xb.sendpkt();
 
 	threadstart = false;
 	threadend = false;
@@ -48,7 +48,7 @@ int main(void)
 void w_tty(void)
 {
 	TTYserial tty("/dev/ttyUSB0", 38400);
-	while (!(threadstart) {}
+	while (!(threadstart)) {}
 
 	outBytesMutex.lock();
 	std::list<uint8_t>::iterator iter = outBytes.begin();
@@ -60,7 +60,7 @@ void w_tty(void)
 	outBytesMutex.unlock();
 
 	threadend = true;
-	threadsendata = true;
+	threadsentdata = true;
 
 	return;
 }

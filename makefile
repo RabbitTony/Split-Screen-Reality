@@ -5,11 +5,16 @@ CF=-std=c++11 -pthread
 SOURCES=xbmain.cpp xbeeDMapi.cpp TTYserial.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=xbmain
+HEADERS=xbeeDMapi.h TTYserial.h
+HEADEROBJS=$(HEADERS:.h=.o)
+
 
 all: $(SOURCES) $(EXECUTABLE)
 
 $(EXECUTABLE) : $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) $(CF) -o $@
+
+$(HEADEROBJS) : $(HEADERS)
 
 .cpp.o:
 	$(CC) $(CFLAGS) $< -o $@
