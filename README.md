@@ -38,3 +38,23 @@ Source Code Documentation
 This section will outline the classes and how they function. This documentation
 will be kept as upto date as possible, though, will most likely be forgotten until
 the end of the project and the final version is being documented. 
+
+
+xbeeDMapi:
+
+	o Is a class that prepares packets for transmission and interprets received 
+	  packets. In its header two lists are defined, inBytes & outBytes. These are
+	  byte streams for ingoing and outgoing bytes.
+
+	o Each API frame type has a make/load method. For example, to prepare a broad-
+	  cast frame you would do xb.makeBCpkt() followed by xb.loadBCpkt(data). 
+
+	o The send method takes the last loaded packet and puts the bytes in the outgoing
+	  buffer. 
+
+TTYserial:
+
+	o A class for dealing with the serial port. It is called with a port and baudrate. 
+
+	o It works similar to arduino's serial library. TTY serial provides an available(),
+	  sendbyte(), and readbyte() function that do as their names suggest. 
