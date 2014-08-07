@@ -1,61 +1,66 @@
 #include <iostream>
-#include <list>
-#include <vector>
-#include <iterator>
-#include <cstdint>
-#include <string>
-#include <queue>
 #include "xbeeDMapi.h"
+#include "TTYserial.h"
+#include <thread>
+#include <mutex>
+#include <vector>
+#include <string>
+#include <cstdint>
+#include <list>
+#include <queue>
+#include <iterator>
+
+volatile bool threadstart;
+volatile bool threadend;
+volatile bool threadgotdata;
+volatile bool threadsentdata;
+
+void w_tty(void);
 
 int main(void)
 {
 	xbeeDMapi xb;
 
-	std::vector<uint8_t> vtest;
-
-	vtest.push_back(0x68);
-	vtest.push_back(0x69);
-	vtest.push_back(0x7E);
+	rcvdPacket p;
+	xb.ZeroPktStruct(p);
 
 	xb.makeBCpkt();
-	xb.loadBCpkt(vtest);
-	xb.sendpkt();
+	std::vector<uint8_t> d;
+	d.push_back(0x68);
+	d.push_back(0x69);
+	xb.loadBCpkt(d);
+	xb.sendPkt();
 
-	outDebug();
+	threadstart = false;
+	threadend = false;
+	threadgotdata = false;
+	threadsentdata = false;
 
-	inDebugLoopback();
+	std::thread t(w_tty);
 
-	if (xb.pktAvailable()) std::cout << "Found packet\n";
-	rcvdPacket p;
-	xb.zeroPktStruct(p);
+	t.join();
 
-	inDebug();
-	uint8_t rv = xb.rcvPkt(p);
-	if (rv)
-	{
-		printf("Rv: %x\n", rv);
-		std::cout << "Found packet of type: " << std::hex << p.pType << std::endl;
-		std::cout << "data byte numbers: " << p.data.size() << "\n";
-		std::cout << "With data of:\n";
-		std::vector<uint8_t>::iterator it = p.data.begin();
-		while(it != p.data.end())
-		{
-			printf(":%x:\n", *it);
-			it++;
-		}
-
-		for (int i = 0; i < 8; i++) printf("---%x---\n", p.from[i]);
-
-	}
-	else
-	{
-		std::cout << "Badlength: " << p.badlength << "\n";
-		std::cout << "Badchecksum: " << p.badchecksum << "\n";
-		std::cout << "nopkts: " << p.nopkts << "\n";
-	}
-
-	std::cout << "the number of bytes in outbytes is: " << outBytes.size() << std::endl;
+	if (threadsentdata) std::cout << "The data was sent.\n" << "outBytes length: " << outBytes.size() << "\n";
 
 	return 0;
 }
 
+void w_tty(void)
+{
+	TTYserial tty("/dev/ttyUSB0", 38400);
+	while (!(threadstart) {}
+
+	outBytesMutex.lock();
+	std::list<uint8_t>::iterator iter = outBytes.begin();
+	while(iter != outBytes.end())
+	{
+		tty.sendbyte((unsigned char) *iter);
+		iter = outBytes.erase(iter);
+	}
+	outBytesMutex.unlock();
+
+	threadend = true;
+	threadsendata = true;
+
+	return;
+}
