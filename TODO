@@ -1,0 +1,8 @@
+1. Rewrite TTYserial::begin so that if a particular TTYserial object has been 
+   called with a new port and/or baud rate, close the original port and open the 
+   new port with the new settings. 
+
+2. Add a close function and getter functions that return the current port and 
+   baudrate of any TTYserial object.
+
+3. Add network map functions to xbeeDMapi. 

@@ -18,7 +18,8 @@
 
 bool TTYserial::begin(std::string modem, int baud)
 {
-	OPENED = false;
+	if (OPENED == true) return OPENED;
+
 	fd = open(modem.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK); // Open the port
 
 	if (fd <= 0) return OPENED; //Return on error. Opened is still false. 
