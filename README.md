@@ -58,3 +58,6 @@ TTYserial:
 
 	o It works similar to arduino's serial library. TTY serial provides an available(),
 	  sendbyte(), and readbyte() function that do as their names suggest. 
+
+This section will be expanded to have a reference for all functions / variables contained with
+in the classes listed above, but at a later date. 
