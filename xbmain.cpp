@@ -47,7 +47,8 @@ int main(void)
 
 void w_tty(void)
 {
-	TTYserial tty("/dev/ttyUSB0", 38400);
+	TTYserial tty;
+	tty.begin("/dev/ttyUSB0", 38400);
 	while (!(threadstart)) {}
 
 	outBytesMutex.lock();

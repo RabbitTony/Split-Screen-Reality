@@ -16,12 +16,12 @@
 #define FALSE 0
 #define TRUE 1
 
-TTYserial::TTYserial(std::string modem, int baud)
+bool TTYserial::begin(std::string modem, int baud)
 {
 	OPENED = false;
 	fd = open(modem.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK); // Open the port
 
-	if (fd <= 0) return; //Return on error. Opened is still false. 
+	if (fd <= 0) return OPENED; //Return on error. Opened is still false. 
 
 	OPENED = true;
 
@@ -98,13 +98,14 @@ TTYserial::TTYserial(std::string modem, int baud)
 	{
 		OPENED = false;
 		std::cout << "There was a problem setting the port settings.\n";
-		return;
+		close(fd);
+		return OPENED;
 	}
 	else
 	{
 		std::cout << "Port settings applied.\n";
-	}
-		
+		return OPENED;
+	}		
 }
 
 int TTYserial::available(void)
