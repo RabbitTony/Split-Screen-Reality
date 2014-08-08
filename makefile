@@ -21,3 +21,7 @@ $(HEADEROBJS) : $(HEADERS)
 
 clean:
 	rm -rf *.o
+
+purge:
+	rm -rf *.o
+	rm $(EXECUTABLE)
