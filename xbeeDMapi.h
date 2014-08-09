@@ -100,6 +100,7 @@ class xbeeDMapi {
 		std::vector<uint8_t> _payLoad;
 		uint8_t _chkSum;
 		uint8_t _packetType;
+		char _ATCmd[2];
 
 		bool _pMade;
 		bool _pLoaded;
@@ -117,6 +118,7 @@ class xbeeDMapi {
 		bool sendpkt(); // Send the packet from the internal storage to the outbytes vector. 
 		// The control monitoring for ACK messages will not be handled in this class but 
 		// rather by the controlling function / process.
+		bool ATNDPkt(uint8_t fID = 0x01);
 		int processedPktCount() { return _processedPktCount;} 
 		xbeeDMapi();
 };

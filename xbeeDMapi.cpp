@@ -512,6 +512,7 @@ void xbeeDMapi::zeroPktStruct(rcvdPacket &pkt)
 
 bool xbeeDMapi::makeBCpkt(uint8_t fID)
 {
+	clearPktData();
 	if(!(pktBytes.empty())) pktBytes.clear();
 	_pMade = false;
 	_pLoaded = false;
@@ -528,6 +529,8 @@ bool xbeeDMapi::makeBCpkt(uint8_t fID)
 	_txOpts = 0x00;
 	if(!(_payLoad.empty())) _payLoad.clear();
 	_chkSum = 0xFF - (0x10 + fID + 0xFF + 0xFF + 0xFF + 0xFE);
+	_ATCmd[0] = 0;
+	_ATCmd[1] = 0;
 
 	_pMade = true;
 	return true;
@@ -585,6 +588,16 @@ bool xbeeDMapi::sendpkt()
 		pktBytes.push_back(_chkSum);
 	}
 
+	else if (_frameType == 0x09)
+	{
+		pktBytes.push_back(_startDelim);
+		pktBytes.push_back(_lengthMSB);
+		pktBytes.push_back(_lengthLSB);
+		pktBytes.push_back(_frameType);
+		pktBytes.push_back(_frameID);
+		pktBytes.push_back(_chkSum);
+	}
+
 	else return false;
 
 	outBytesMutex.lock(); // Now move the packet bytes into the outgoing buffer and do escaping when needed. 
@@ -614,6 +627,24 @@ bool xbeeDMapi::sendpkt()
 	return true;
 }
 
+bool xbeeDMapi::ATNDPkt(uint8_t fID = 0x01)
+{
+	clearPktData();
+
+	_startDelim = 0x7E;
+	_lengthMSB = 0x00;
+	_lengthLSB = 0x04;
+	_frameType = 0x09;
+	_frameID = fID;
+	_ATCmd[0] = 'N';
+	_ATcmd[1] = 'D';
+	_chkSum = 0xFF - (_frameType + _frameID + (uint8_t)_ATCmd[0] + (uint8_t)_ATCmd[1]);
+
+	_pLoaded = true;
+	_pMade = true;
+	return true;
+}
+	
 void outDebug(void)
 {
 	if (outBytes.empty())

@@ -6,3 +6,7 @@
    baudrate of any TTYserial object.
 
 3. Add network map functions to xbeeDMapi. 
+   *** Added the AT-ND command to xbeeDMapi but need to account for receiving a packet
+   from the response in the receiver functions. 
+   
+   Need to write a class to actually hold the network map. 
