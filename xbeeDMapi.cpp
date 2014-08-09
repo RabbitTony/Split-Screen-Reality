@@ -336,6 +336,7 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 
 	if (it == rcvdBytes.end())
 	{
+		_processedPktcount--;
 		pkt.badlength = true;
 		return 0;
 	}
@@ -372,7 +373,7 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 		return 0;
 	}
 
-	//No we are at the length LSB.
+	//Now we are at the length LSB.
 	uint8_t length = 0x00;
 	
 	if (*it == 0x7D)
@@ -381,12 +382,22 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 		if (it == rcvdBytes.end())
 		{
 			pkt.badlength = true;
+			_processedPktCount--;
 			return 0;
 		}
+
+		if (*it == 0x7E) // Possible if there was an error in available();
+		{
+			pkt.badlength = true;
+			_processedPktCount--;
+			return 0;
+		}
+
 		length = *it ^ 0x20;
 		it = rcvdBytes.erase(it);
-		if (it == rcvdBytes.end())
+		if (it == rcvdBytes.end() || *it == 0x7E)
 		{
+			_processedPktCount--;
 			pkt.badlength = true;
 			return 0;
 		}
@@ -399,7 +410,7 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 	}
 
 	// At this point we are at the API frame id byte. 
-	if (it != rcvdBytes.end())
+	if (it != rcvdBytes.end() || *it != 0x7E)
 	{
 		_processedPktCount--;
 		pkt.nopkts = false;
@@ -465,12 +476,8 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 		return 0;
 	}
 
-	//At this point we have the packet in the temp. buffer and we know that the length and checksum are ok. 
-	//////////////////////////////////////DEBUG////////////////////////////////////////
-	std::cout << "the tbuffer contains:\n";
-	for (std::vector<uint8_t>::iterator titer = tbuffer.begin(); titer != tbuffer.end(); titer++) printf(":%x:\n",*titer);
-	//////////////////////////////////////DEBUG////////////////////////////////////////
-
+	//At this point we have the packet in the temp. buffer and we know that the length and checksum are ok.
+	//IE: We have a complete frame inside of the tbuffer vector and we now need to process it. (de-escaping has been completed)
 	if (APIframeID == APIid_RP) //Receive packet
 	{
 		//Source address
@@ -492,6 +499,11 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 		}
 
 		return APIframeID;
+	}
+
+	else if (APIframeID == APIid_ATCR) // AT command response.
+	{
+		// Code to handle API ATCR packet goes here. . .
 	}
 	else return 0xFF;
 }
@@ -538,6 +550,7 @@ bool xbeeDMapi::makeBCpkt(uint8_t fID)
 
 bool xbeeDMapi::loadBCpkt(const std::vector<uint8_t> &pktData)
 {
+	if (_pMade == false) return false;
 	if(pktData.size() >= 180) return false;
 	_lengthLSB += (uint8_t)pktData.size();
 	if (pktData.empty()) return true;
@@ -550,6 +563,37 @@ bool xbeeDMapi::loadBCpkt(const std::vector<uint8_t> &pktData)
 
 	_pLoaded = true;
 	return true;
+}
+
+bool xbeeDMapi::makeUnicastPkt(const Address64 &dest, uint8_t fID = 0x01)
+{
+	clearPktData();
+	if(!(pktBytes.empty())) pktBytes.clear();
+	_pMade = false;
+	_pLoaded = false;
+
+	_startDelim = 0x7E;
+	_lengthMSB = 0x00;
+	_lengthLSB = 0x0E;
+	_frameType = 0x10;
+	_frameID = fID;
+	_destAdr = dest;
+	_R1 = 0xFF;
+	_R2 = 0xFE;
+	_bcRad = 0x00;
+	_txOpts = 0x00;
+	if(!(_payLoad.empty())) _payLoad.clear();
+	_chkSum = 0xFF - (0x10 + fID + 0xFF + 0xFF + 0xFF + 0xFE);
+	_ATCmd[0] = 0;
+	_ATCmd[1] = 0;
+
+	_pMade = true;
+	return true;
+}
+
+bool xbeeDMapi::loadUnicastPkt(const std::vector<uint8_t> &pktData)
+{
+	return loadBCPkt(pktData);
 }
 
 bool xbeeDMapi::sendpkt()

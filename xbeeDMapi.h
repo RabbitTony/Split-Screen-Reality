@@ -113,8 +113,10 @@ class xbeeDMapi {
 		bool pktAvailable(); // Check for available packets & move data from inbytes into rcvdBytes. 
 		uint8_t rcvPkt(rcvdPacket&); // process a packet from rcvdBytes and return the type. . 
 		void zeroPktStruct(rcvdPacket&); //Set all fields to zero for a packet struct. 
-		bool makeBCpkt(uint8_t fID = 0x01); // Prep a broadcast packet (IE fill in the byte fields)
-		bool loadBCpkt(const std::vector<uint8_t>&); // Load data into the broadcast packet;
+		bool makeBCPkt(uint8_t fID = 0x01); // Prep a broadcast packet (IE fill in the byte fields)
+		bool loadBCPkt(const std::vector<uint8_t>&); // Load data into the broadcast packet;
+		bool makeUnicastPkt(const Address64&, uint8_t fID = 0x01); //Make a unicast packet and address it.
+		bool loadUnicastPkt(const std::vector<uint8_t>&); //Load the RF data into the packet. 
 		bool sendpkt(); // Send the packet from the internal storage to the outbytes vector. 
 		// The control monitoring for ACK messages will not be handled in this class but 
 		// rather by the controlling function / process.
