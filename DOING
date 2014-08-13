@@ -1,4 +1,4 @@
-1. Working on the code for the network map class
-
 2. working on code for AT command processing in xbeeDMapi::rcvPkt();
+	Code is done for the ND command, but others are yet to be implemented.
+	may just do a generic function that accepts a 2 byte character array.
 

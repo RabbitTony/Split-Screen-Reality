@@ -14,28 +14,30 @@ extern std::mutex inBytesMutex, outBytesMutex;
 extern std::list<uint8_t> inBytes;
 extern std::list<uint8_t> outBytes;
 
-class Address64 {
+class address64 
+{
 
 	private:
 		uint64_t address64bit;
 		uint8_t address8bytes[8];
 
 	public:
-		Address64();
-		Address64(uint64_t);
-		Address64(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
+		address64();
+		address64(uint64_t);
+		address64(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 
-		Address64& operator=(const uint64_t&);
-		Address64& operator=(const Address64&);
+		address64& operator=(const uint64_t&);
+		address64& operator=(const address64&);
 		uint8_t& operator[](const int);
-		bool operator==(const Address64&)const;
-		bool operator!=(const Address64&)const;
+		bool operator==(const address64&)const;
+		bool operator!=(const address64&)const;
 
 		void split(); //go from 64bit address to 8 1-byte addresses
 		void combine(); //go from 8 1-byte addresses to 1 64bit address
 };
 
-class xb_except : public std::exception {
+class xb_except : public std::exception 
+{
 
 	private:
 		std::string errstr;
@@ -50,12 +52,13 @@ class xb_except : public std::exception {
 		virtual ~xb_except() throw() {}
 };
 
-struct rcvdPacket {
-	Address64 from;
+struct rcvdPacket 
+{
+	address64 from;
 	uint8_t length;
 	uint8_t pType;
 	int txRetryCount;
-	uint8_t delivStatus;
+	uint8_t deliveryStatus;
 	uint8_t receiveOpts;
 
 	bool nopkts;
@@ -64,7 +67,7 @@ struct rcvdPacket {
 	std::vector<uint8_t> data;
 };
 
-const Address64 BCadr(0x000000000000ffff); //Broadcast address
+const address64 BCadr(0x000000000000ffff); //Broadcast address
 const uint8_t StDelim = 0x7E; //Start deliminator
 
 //These constants are the API ID's, basically tell the frame type. 
@@ -77,7 +80,8 @@ const uint8_t APIid_TS = 0x8B; // Transmit Status
 const uint8_t APIid_MS = 0x8A; // Modem Status
 
 
-class xbeeDMapi { 
+class xbeeDMapi 
+{ 
 
 	private:
 		std::vector<uint8_t> pktBytes;
@@ -92,7 +96,7 @@ class xbeeDMapi {
 		uint8_t _lengthLSB;
 		uint8_t _frameID;
 		uint8_t _frameType;
-		Address64 _destAdr;
+		address64 _destAdr;
 		uint8_t _R1;
 		uint8_t _R2;
 		uint8_t _bcRad;
@@ -115,15 +119,34 @@ class xbeeDMapi {
 		void zeroPktStruct(rcvdPacket&); //Set all fields to zero for a packet struct. 
 		bool makeBCPkt(uint8_t fID = 0x01); // Prep a broadcast packet (IE fill in the byte fields)
 		bool loadBCPkt(const std::vector<uint8_t>&); // Load data into the broadcast packet;
-		bool makeUnicastPkt(const Address64&, uint8_t fID = 0x01); //Make a unicast packet and address it.
+		bool makeUnicastPkt(const address64&, uint8_t fID = 0x01); //Make a unicast packet and address it.
 		bool loadUnicastPkt(const std::vector<uint8_t>&); //Load the RF data into the packet. 
-		bool sendpkt(); // Send the packet from the internal storage to the outbytes vector. 
+		bool sendPkt(); // Send the packet from the internal storage to the outbytes vector. 
 		// The control monitoring for ACK messages will not be handled in this class but 
 		// rather by the controlling function / process.
 		bool ATNDPkt(uint8_t fID = 0x01);
 		int processedPktCount() { return _processedPktCount;} 
 		xbeeDMapi();
 };
+
+class xbeeNeighbors
+{
+	// This class keeps tracks of the 64-bit addresses of all other nodes in an 
+	// xbee network. It does not depend on the type of network, this class would
+	// work equally well for Zigbee, 802.15.4, and DigiMesh. So long as all
+	// addressing uses a 64-bit address type. 
+
+	private:
+		std::<uint8_t>list neighbors;
+
+	public:
+		bool update(const address64&);
+		int neighborCount();
+		address64& operator[](const int);
+		bool remove(int);
+		bool clear();
+}
+
 
 void outDebug(void);
 void inDebug(void);

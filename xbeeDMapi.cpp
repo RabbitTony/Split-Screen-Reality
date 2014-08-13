@@ -12,7 +12,7 @@ std::mutex inBytesMutex, outBytesMutex;
 std::list<uint8_t> inBytes;
 std::list<uint8_t> outBytes;
 
-Address64::Address64()
+address64::address64()
 {
 	address64bit = 0x00;
 	for (int i = 0; i < 8; i++)
@@ -21,13 +21,13 @@ Address64::Address64()
 	}
 }
 
-Address64::Address64(uint64_t a64)
+address64::address64(uint64_t a64)
 {
 	address64bit = a64;
 	split();
 }
 
-Address64::Address64(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5, uint8_t b6, uint8_t b7, uint8_t b8)
+address64::address64(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5, uint8_t b6, uint8_t b7, uint8_t b8)
 {
 
 	address8bytes[0] = b1;
@@ -41,14 +41,14 @@ Address64::Address64(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5,
 	combine();
 }
 
-Address64& Address64::operator=(const uint64_t &a64)
+address64& address64::operator=(const uint64_t &a64)
 {
 	address64bit = a64;
 	split();
 	return *this;
 }
 
-Address64& Address64::operator=(const Address64 &rhs)
+address64& address64::operator=(const address64 &rhs)
 {
 	if (this == &rhs) return *this;
 
@@ -61,19 +61,19 @@ Address64& Address64::operator=(const Address64 &rhs)
 	return *this;
 }
 
-uint8_t& Address64::operator[](const int index)
+uint8_t& address64::operator[](const int index)
 {
 	//To keep the programm running, an out of bounds error will default to 
 	//the least significant byte after throwing an appropriate exception.
 	if (index < 0 || index > 7)
 	{
-		throw xb_except("Address64[] index out of bounds, operation ignored.");
+		throw xb_except("address64[] index out of bounds, operation ignored.");
 	}
 
 	return address8bytes[index];
 }
 
-bool Address64::operator==(const Address64 &rhs) const
+bool address64::operator==(const address64 &rhs) const
 {
 	int i = 0;
 	bool result = true;
@@ -86,13 +86,13 @@ bool Address64::operator==(const Address64 &rhs) const
 	return result;
 }
 
-bool Address64::operator!=(const Address64 &rhs) const
+bool address64::operator!=(const address64 &rhs) const
 {
 
 	return ! (*this == rhs);
 }
 
-void Address64::split()
+void address64::split()
 {
 	address8bytes[0] = (address64bit >> 56);
 	address8bytes[1] = (address64bit >> 48);
@@ -104,7 +104,7 @@ void Address64::split()
 	address8bytes[7] = (address64bit >>  0);
 }
 
-void Address64::combine()
+void address64::combine()
 {
 	address64bit = 0x00;
 	
@@ -234,7 +234,6 @@ bool xbeeDMapi::pktAvailable()
 	inBytesMutex.lock();
 	i2++; //This is where the length amount actually starts, now we need to account for escape characters here as well
 	int num = 0;
-	printf("i2 before processing: %x\n", *i2); /////////////////////DEBUG
 
 	if (i2 == inBytes.end()) 
 	{
@@ -244,7 +243,6 @@ bool xbeeDMapi::pktAvailable()
 
 	while (num < frameLength)
 	{
-			printf("num: %d, i2: %x\n",num, *i2); /////////////////////////DEBUG
 			if (*i2 == 0x7d)
 			{
 				if (i2 == inBytes.end())
@@ -261,7 +259,6 @@ bool xbeeDMapi::pktAvailable()
 				}
 
 				i2++;
-				printf("NUM: %d, i2: %x (during processing)\n", num, *i2); ////////////DEBUG
 			}
 			else
 			{
@@ -291,9 +288,6 @@ bool xbeeDMapi::pktAvailable()
 	// it is a full packet. 
 	inBytesMutex.unlock();
 
-	if (i2 == inBytes.end()) std::cout << "i2 is at inbytes.end()\n"; ///////DEBUG
-
-	printf("i2 (num = %d) at end of checking: %x\n",num, *i2); //////////////////////////////////////////DEBUG
 
 	//Now, we know that we have a complete packet in the inBytes buffer. 
 
@@ -305,7 +299,6 @@ bool xbeeDMapi::pktAvailable()
 	std::list<uint8_t>::iterator j = i1;
 	while(j != i2)
 	{
-		printf("j: %x\n", *j); //////////DEBUG
 		rcvdBytes.push_back(*j);
 		j = inBytes.erase(j);
 	}
@@ -478,6 +471,10 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 
 	//At this point we have the packet in the temp. buffer and we know that the length and checksum are ok.
 	//IE: We have a complete frame inside of the tbuffer vector and we now need to process it. (de-escaping has been completed)
+
+	/////////////////////////////////////////////////////////////////////
+
+	//NOTE: The first byte in tBuffer is the frame time. 
 	if (APIframeID == APIid_RP) //Receive packet
 	{
 		//Source address
@@ -503,8 +500,29 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 
 	else if (APIframeID == APIid_ATCR) // AT command response.
 	{
-		// Code to handle API ATCR packet goes here. . .
+		if (tbuffer[2] == 0x4E && tbuffer[3] == 0x44) // "ND"
+		{
+			pkt.from[0] = tbuffer[7];
+			pkt.from[1] = tbuffer[8];
+			pkt.from[2] = tbuffer[9];
+			pkt.from[3] = tbuffer[10];
+			pkt.from[4] = tbuffer[11];
+			pkt.from[5] = tbuffer[12];
+			pkt.from[6] = tbuffer[13];
+			pkt.from[7] = tbuffer[14];
+			return APIframeID;
+		}
+
+		else return 0xFF;
 	}
+
+	else if (APIframeID == APIid_TS) //Transmit status
+	{
+		pkt.txRetryCount = tbuffer[3];
+		pkt.deliveryStatus = tbuffer[4];
+		return APIframeID;
+	}
+		
 	else return 0xFF;
 }
 
@@ -565,7 +583,7 @@ bool xbeeDMapi::loadBCpkt(const std::vector<uint8_t> &pktData)
 	return true;
 }
 
-bool xbeeDMapi::makeUnicastPkt(const Address64 &dest, uint8_t fID = 0x01)
+bool xbeeDMapi::makeUnicastPkt(const address64 &dest, uint8_t fID = 0x01)
 {
 	clearPktData();
 	if(!(pktBytes.empty())) pktBytes.clear();
@@ -596,7 +614,7 @@ bool xbeeDMapi::loadUnicastPkt(const std::vector<uint8_t> &pktData)
 	return loadBCPkt(pktData);
 }
 
-bool xbeeDMapi::sendpkt()
+bool xbeeDMapi::sendPkt()
 {
 	if (_pMade == false || _pLoaded == false) 
 	{
@@ -688,7 +706,57 @@ bool xbeeDMapi::ATNDPkt(uint8_t fID = 0x01)
 	_pMade = true;
 	return true;
 }
-	
+
+bool xbeeNeighbors::update(const address64 &adr)
+{
+	if (_neighbors.empty()) 
+	{
+		_neighbors.push_back(adr);
+		return true;
+	}
+
+	bool check = true;
+	std::vector<address64>::iterator it = _neighbors.begin();
+	while(check == true && it != _neighbors.end())
+	{
+		if(adr == *it) check == false;
+		it++;
+	}
+
+	if (check) _neighbors.push_back(adr);
+	else return false;
+
+	return true;
+}
+
+int xbeeNeighbors::neighborCount()
+{
+	return _neighbors.size();
+}
+
+address64& xbeeNeighbors::operator[](const int index)
+{
+	if (index < 0) return _neighbors[0];
+	if (index >= _neighbors.size()) return _neighbors[_neighbors.size()-1];
+
+	return _neighbors[index];
+}
+
+bool xbeeNeighbors::remove(int n)
+{
+	if (n < 0 || n >= _neighbors.size()) return false;
+	_neighbors.erase(_neighbors.begin() + n);
+	return false;
+}
+
+bool xbeeNeighbors::clear()
+{
+	_neighbors.clear();
+	return true;
+}
+
+///////////////////////////////////////// Debugging functions ////////////////////////////////
+
 void outDebug(void)
 {
 	if (outBytes.empty())
