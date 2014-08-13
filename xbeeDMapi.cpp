@@ -329,7 +329,7 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 
 	if (it == rcvdBytes.end())
 	{
-		_processedPktcount--;
+		_processedPktCount--;
 		pkt.badlength = true;
 		return 0;
 	}
@@ -532,7 +532,7 @@ void xbeeDMapi::zeroPktStruct(rcvdPacket &pkt)
 	pkt.length = 0x00;
 	pkt.pType = 0x00;
 	pkt.txRetryCount = 0x00;
-	pkt.delivStatus = 0x00;
+	pkt.deliveryStatus = 0x00;
 	pkt.receiveOpts = 0x00;
 	pkt.nopkts = false;
 	pkt.badlength = false;
@@ -540,7 +540,7 @@ void xbeeDMapi::zeroPktStruct(rcvdPacket &pkt)
 	if (!pkt.data.empty()) pkt.data.clear();
 }
 
-bool xbeeDMapi::makeBCpkt(uint8_t fID)
+bool xbeeDMapi::makeBCPkt(uint8_t fID)
 {
 	clearPktData();
 	if(!(pktBytes.empty())) pktBytes.clear();
@@ -566,7 +566,7 @@ bool xbeeDMapi::makeBCpkt(uint8_t fID)
 	return true;
 }
 
-bool xbeeDMapi::loadBCpkt(const std::vector<uint8_t> &pktData)
+bool xbeeDMapi::loadBCPkt(const std::vector<uint8_t> &pktData)
 {
 	if (_pMade == false) return false;
 	if(pktData.size() >= 180) return false;
@@ -583,7 +583,7 @@ bool xbeeDMapi::loadBCpkt(const std::vector<uint8_t> &pktData)
 	return true;
 }
 
-bool xbeeDMapi::makeUnicastPkt(const address64 &dest, uint8_t fID = 0x01)
+bool xbeeDMapi::makeUnicastPkt(const address64 &dest, uint8_t fID)
 {
 	clearPktData();
 	if(!(pktBytes.empty())) pktBytes.clear();
@@ -689,7 +689,7 @@ bool xbeeDMapi::sendPkt()
 	return true;
 }
 
-bool xbeeDMapi::ATNDPkt(uint8_t fID = 0x01)
+bool xbeeDMapi::ATNDPkt(uint8_t fID)
 {
 	clearPktData();
 
@@ -699,7 +699,7 @@ bool xbeeDMapi::ATNDPkt(uint8_t fID = 0x01)
 	_frameType = 0x09;
 	_frameID = fID;
 	_ATCmd[0] = 'N';
-	_ATcmd[1] = 'D';
+	_ATCmd[1] = 'D';
 	_chkSum = 0xFF - (_frameType + _frameID + (uint8_t)_ATCmd[0] + (uint8_t)_ATCmd[1]);
 
 	_pLoaded = true;

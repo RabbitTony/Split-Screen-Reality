@@ -137,7 +137,7 @@ class xbeeNeighbors
 	// addressing uses a 64-bit address type. 
 
 	private:
-		std::<uint8_t>list neighbors;
+		std::vector<address64> _neighbors;
 
 	public:
 		bool update(const address64&);
@@ -145,7 +145,7 @@ class xbeeNeighbors
 		address64& operator[](const int);
 		bool remove(int);
 		bool clear();
-}
+};
 
 
 void outDebug(void);
