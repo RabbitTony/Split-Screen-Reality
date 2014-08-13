@@ -1,7 +1,7 @@
 CC=g++
-CFLAGS=-c -std=c++11 -pthread
+CFLAGS=-c -std=c++0x -pthread
 LDFLAGS=
-CF=-std=c++11 -pthread
+CF=-std=c++0x -pthread
 SOURCES=xbmain.cpp xbeeDMapi.cpp TTYserial.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=xbmain
