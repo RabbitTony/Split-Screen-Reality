@@ -28,6 +28,7 @@ class TTYserial {
 	public:
 		TTYserial() { OPENED = false; }
 		bool begin(std::string, int);
+		bool close(void);
 		int available(void);
 		bool sendbyte(unsigned char);
 		unsigned char readbyte(void);

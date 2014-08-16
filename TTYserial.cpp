@@ -141,6 +141,20 @@ bool TTYserial::status(void)
 	return OPENED;
 }
 
+bool TTYserial::close(void)
+{
+	if (OPENED == true)
+	{
+		tcsetattr(fd,TCSANOW, &old_ts);
+		close(fd);
+		return true;
+	}
+
+	else return false;
+
+	return false // in case of errors or un-forseen problems.
+}
+
 TTYserial::~TTYserial()
 {
 	tcsetattr(fd, TCSANOW, &old_ts);
