@@ -112,8 +112,8 @@ int main(int argc, char *argv[])
 			if(xb.rcvPkt(pkt) == APIid_TS)
 			{
 				std::cout << "TS status received:\n";
-				std::cout << "Retry count: " << std::hex << pkt.txRetryCount << std::endl;
-				std::cout << "Delivery status: " << std::hex << pkt.deliveryStatus << std::endl;
+				printf("Retry count: %d\n", pkt.txRetryCount);
+				printf("Delivery status: 0x%X\n", pkt.deliveryStatus);
 				xb.zeroPktStruct(pkt);
 			}
 			else
@@ -125,7 +125,43 @@ int main(int argc, char *argv[])
 	}
 
 	// Do unicast packet here, eventually. 
+	address64 ady;
+	ady = 0x0013A20040B39D52;
 
+	xb.makeUnicastPkt(ady);
+	std::vector<uint8_t> data;
+	data.push_back(0x68);
+	data.push_back(0x69);
+	data.push_back(0x68);
+	data.push_back(0x69);
+	xb.loadUnicastPkt(data);
+	xb.sendPkt();
+
+
+	time(&start);
+	time(&check);
+	rcvdPacket pkt;
+	xb.zeroPktStruct(pkt);
+
+	while (difftime(check,start) <= 3.00)
+	{
+		if (xb.pktAvailable())
+		{
+			if(xb.rcvPkt(pkt) == APIid_TS)
+			{
+				std::cout << "TS status received:\n";
+				printf("Retry count: %d\n", pkt.txRetryCount);
+				printf("Delivery status: 0x%X\n", pkt.deliveryStatus);
+				xb.zeroPktStruct(pkt);
+			}
+			else
+			{
+				std::cout << "Non-TS packet type received.\n";
+			}
+		}
+		time(&check);
+	}
+	
 	//test for AT-ND packet.
 
 	xb.ATNDPkt();

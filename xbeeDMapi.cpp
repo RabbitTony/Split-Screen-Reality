@@ -520,8 +520,8 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 
 	else if (APIframeID == APIid_TS) //Transmit status
 	{
-		pkt.txRetryCount = tbuffer[3];
-		pkt.deliveryStatus = tbuffer[4];
+		pkt.txRetryCount = tbuffer[4];
+		pkt.deliveryStatus = tbuffer[5];
 		return APIframeID;
 	}
 		
