@@ -124,12 +124,13 @@ int main(int argc, char *argv[])
 		time(&check);
 	}
 
-	// Do unicast packet here, eventually. 
+	//Unicast. 
 	address64 ady;
 	ady = 0x0013A20040B39D52;
 
 	xb.makeUnicastPkt(ady);
-	std::vector<uint8_t> data;
+	//std::vector<uint8_t> data;
+	data.clear();
 	data.push_back(0x68);
 	data.push_back(0x69);
 	data.push_back(0x68);
@@ -140,7 +141,6 @@ int main(int argc, char *argv[])
 
 	time(&start);
 	time(&check);
-	rcvdPacket pkt;
 	xb.zeroPktStruct(pkt);
 
 	while (difftime(check,start) <= 3.00)
