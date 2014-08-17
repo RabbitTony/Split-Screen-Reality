@@ -701,7 +701,7 @@ bool xbeeDMapi::ATNDPkt(uint8_t fID)
 	_startDelim = 0x7E;
 	_lengthMSB = 0x00;
 	_lengthLSB = 0x04;
-	_frameType = 0x09;
+	_frameType = 0x08;
 	_frameID = fID;
 	_ATCmd[0] = 'N';
 	_ATCmd[1] = 'D';

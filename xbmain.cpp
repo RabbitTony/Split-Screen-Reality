@@ -132,6 +132,8 @@ int main(int argc, char *argv[])
 	if(!(xb.sendPkt()))
 	{
 		std::cout << "Error sending ATND packet.\n";
+		STOP = true;
+		port.join();
 		return 0;
 	}
 
