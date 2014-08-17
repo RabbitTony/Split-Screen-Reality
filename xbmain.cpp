@@ -129,7 +129,12 @@ int main(int argc, char *argv[])
 	//test for AT-ND packet.
 
 	xb.ATNDPkt();
-	xb.sendPkt();
+	if(!(xb.sendPkt()))
+	{
+		std::cout << "Error sending ATND packet.\n";
+		return 0;
+	}
+
 	xb.zeroPktStruct(pkt);
 	
 	std::cout << "AT-ND packet sent.\n";

@@ -653,13 +653,15 @@ bool xbeeDMapi::sendPkt()
 		pktBytes.push_back(_chkSum);
 	}
 
-	else if (_frameType == 0x09)
+	else if (_frameType == 0x08)
 	{
 		pktBytes.push_back(_startDelim);
 		pktBytes.push_back(_lengthMSB);
 		pktBytes.push_back(_lengthLSB);
 		pktBytes.push_back(_frameType);
 		pktBytes.push_back(_frameID);
+		pktBytes.push_back((uint8_t)_ATCmd[0]);
+		pktBytes.push_back((uint8_t)_ATCmd[1]);
 		pktBytes.push_back(_chkSum);
 	}
 
