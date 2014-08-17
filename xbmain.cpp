@@ -112,8 +112,8 @@ int main(int argc, char *argv[])
 			if(xb.rcvPkt(pkt) == APIid_TS)
 			{
 				std::cout << "TS status received:\n";
-				std::cout << "Retry count: " << pkt.txRetryCount << std::endl;
-				std::cout << "Delivery status: " << pkt.deliveryStatus << std::endl;
+				std::cout << "Retry count: " << std::hex << pkt.txRetryCount << std::endl;
+				std::cout << "Delivery status: " << std::hex << pkt.deliveryStatus << std::endl;
 				xb.zeroPktStruct(pkt);
 			}
 			else
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 	time(&start);
 	time(&check);
 
-	while (difftime(check,start) <= 20.00)
+	while (difftime(check,start) <= 30.0)
 	{
 		if (xb.pktAvailable())
 		{
@@ -220,6 +220,7 @@ void w_tty(void)
 		{
 			outBytesMutex.lock();
 			tty.sendbyte(outBytes.front());
+			usleep(1);
 			outBytes.pop_front();
 			outBytesMutex.unlock();
 		}
@@ -271,6 +272,7 @@ void readerMain(void)
 			}
 
 		}
+		time(&check);
 	}
 
 	std::cout << "End of while loop for readerMain()\n";
