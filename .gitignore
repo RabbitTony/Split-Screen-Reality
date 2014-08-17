@@ -1,0 +1,7 @@
+#Ignore objects and sub directories. 
+
+build/
+tests/
+*.[oa]
+old/
+
