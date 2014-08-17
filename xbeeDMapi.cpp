@@ -502,6 +502,8 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 	{
 		if (tbuffer[2] == 0x4E && tbuffer[3] == 0x44) // "ND"
 		{
+			pkt.ATCmd[0] = tbuffer[2];
+			pkt.ATCmd[1] = tbuffer[3];
 			pkt.from[0] = tbuffer[7];
 			pkt.from[1] = tbuffer[8];
 			pkt.from[2] = tbuffer[9];
@@ -537,6 +539,7 @@ void xbeeDMapi::zeroPktStruct(rcvdPacket &pkt)
 	pkt.nopkts = false;
 	pkt.badlength = false;
 	pkt.badchecksum = false;
+	pkt.ATCmd[0] = pkt.ATCmd[1] = 0x00;
 	if (!pkt.data.empty()) pkt.data.clear();
 }
 

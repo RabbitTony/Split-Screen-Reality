@@ -60,7 +60,7 @@ struct rcvdPacket
 	int txRetryCount;
 	uint8_t deliveryStatus;
 	uint8_t receiveOpts;
-
+	uint8_t ATCmd[2];
 	bool nopkts;
 	bool badlength;
 	bool badchecksum;

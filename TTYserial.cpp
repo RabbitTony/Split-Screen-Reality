@@ -141,7 +141,7 @@ bool TTYserial::status(void)
 	return OPENED;
 }
 
-bool TTYserial::close(void)
+bool TTYserial::end(void)
 {
 	if (OPENED == true)
 	{
@@ -152,7 +152,7 @@ bool TTYserial::close(void)
 
 	else return false;
 
-	return false // in case of errors or un-forseen problems.
+	return false; // in case of errors or un-forseen problems.
 }
 
 TTYserial::~TTYserial()
