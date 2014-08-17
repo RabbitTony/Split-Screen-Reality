@@ -751,7 +751,7 @@ bool xbeeNeighbors::remove(int n)
 {
 	if (n < 0 || n >= _neighbors.size()) return false;
 	_neighbors.erase(_neighbors.begin() + n);
-	return false;
+	return true;
 }
 
 bool xbeeNeighbors::clear()
