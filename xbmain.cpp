@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 	data.push_back(0x68);
 	data.push_back(0x69);
 	data.push_back(0x68);
-	data.push_back(0x69);
+	data.push_back(0x13);
 	xb.loadBCPkt(data);
 	xb.sendPkt();
 	
@@ -123,27 +123,30 @@ int main(int argc, char *argv[])
 		}
 		time(&check);
 	}
-
+	
+	std::cout << "Testing unicast data.\n";
 	//Unicast. 
-	address64 ady;
-	ady = 0x0013A20040B39D52;
-
-	xb.makeUnicastPkt(ady);
+	address64 ady(0x0013A20040B39D52);
+	printf("%x.%x.%x.%x.%x.%x.%x.%x\n", ady[0], ady[1], ady[2], ady[3], ady[4], ady[5], ady[6], ady[7]);
+	if (xb.makeUnicastPkt(ady, 0x02)) std::cout << "Unicast packet made successfully.\n";
 	//std::vector<uint8_t> data;
 	data.clear();
 	data.push_back(0x68);
 	data.push_back(0x69);
 	data.push_back(0x68);
 	data.push_back(0x69);
-	xb.loadUnicastPkt(data);
-	xb.sendPkt();
+	if (xb.loadUnicastPkt(data)) std::cout << "Unicast packet loaded successfully.\n";
+	if (!xb.sendPkt())
+	{
+		std::cout << "Error with unicast data.\n";
+	}
 
 
 	time(&start);
 	time(&check);
 	xb.zeroPktStruct(pkt);
 
-	while (difftime(check,start) <= 3.00)
+	while (difftime(check,start) <= 15.00)
 	{
 		if (xb.pktAvailable())
 		{
@@ -209,7 +212,7 @@ int main(int argc, char *argv[])
 	for(int i = 0; i < nmap.neighborCount(); i++)
 	{
 		address64 adr = nmap[i];
-		printf("%x:%x:%x:%x:%x:%x:%x:%x\n", adr[0], adr[1], adr[2], adr[3],
+		printf("N[%d] = %x:%x:%x:%x:%x:%x:%x:%x\n", i, adr[0], adr[1], adr[2], adr[3],
 			adr[4], adr[5], adr[6], adr[7]);
 	}
 	

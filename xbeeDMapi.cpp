@@ -58,6 +58,8 @@ address64& address64::operator=(const address64 &rhs)
 		this->address8bytes[i] = rhs.address8bytes[i];
 	}
 
+	combine();
+
 	return *this;
 }
 
@@ -604,7 +606,8 @@ bool xbeeDMapi::makeUnicastPkt(const address64 &dest, uint8_t fID)
 	_bcRad = 0x00;
 	_txOpts = 0x00;
 	if(!(_payLoad.empty())) _payLoad.clear();
-	_chkSum = 0xFF - (0x10 + fID + 0xFF + 0xFF + 0xFF + 0xFE);
+	_chkSum = 0xFF - (0x10 + fID + 0xFF + 0xFE + _destAdr[0] + _destAdr[1] + _destAdr[2]
+			+ _destAdr[3] + _destAdr[4] + _destAdr[5] + _destAdr[6] + _destAdr[7]);
 	_ATCmd[0] = 0;
 	_ATCmd[1] = 0;
 
@@ -614,6 +617,7 @@ bool xbeeDMapi::makeUnicastPkt(const address64 &dest, uint8_t fID)
 
 bool xbeeDMapi::loadUnicastPkt(const std::vector<uint8_t> &pktData)
 {
+	_pLoaded = true;
 	return loadBCPkt(pktData);
 }
 

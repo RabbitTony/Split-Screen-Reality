@@ -104,7 +104,6 @@ bool TTYserial::begin(std::string modem, int baud)
 	}
 	else
 	{
-		std::cout << "Port settings applied.\n";
 		return OPENED;
 	}		
 }
