@@ -41,24 +41,96 @@ will be kept as upto date as possible, though, will most likely be forgotten unt
 the end of the project and the final version is being documented. 
 
 
-xbeeDMapi:
+#xbeeDMapi:#
 
-	o Is a class that prepares packets for transmission and interprets received 
-	  packets. In its header two lists are defined, inBytes & outBytes. These are
-	  byte streams for ingoing and outgoing bytes.
+* Is a class that prepares packets for transmission and interprets received 
+* packets. In its header two lists are defined, inBytes & outBytes. These are
+* byte streams for ingoing and outgoing bytes.
 
-	o Each API frame type has a make/load method. For example, to prepare a broad-
-	  cast frame you would do xb.makeBCpkt() followed by xb.loadBCpkt(data). 
+* The class is designed to be thread safe and to utilize the inBytes and outBytes
+* buffers, which have been globally defined in xbeeDMapi.h. The purpose for this is
+* to allow any function one wants to make the calls to the serial port and load/empty
+* the buffers. 
 
-	o The send method takes the last loaded packet and puts the bytes in the outgoing
-	  buffer. 
+* Each API frame type has a make/load method. For example, to prepare a broad-
+* cast frame you would do xb.makeBCpkt() followed by xb.loadBCpkt(data). 
 
-TTYserial:
+* The send method takes the last loaded packet and puts the bytes in the outgoing
+* buffer. 
 
-	o A class for dealing with the serial port. It is called with a port and baudrate. 
+* In order to use this class, the class/function responsible for talking to the xbee
+* on the serial port must write its data to the buffers defined in xbeeDMapi.h. These
+* buffers are of the type std::list. The class is written to be thread safe, so
+* threading a worker to monitor the serial port is possible. The mutexes used in all
+* of the functions are also defined in xbeeDMapi.h, called inBytesMutex and
+* outBytesMutex. 
 
-	o It works similar to arduino's serial library. TTY serial provides an available(),
-	  sendbyte(), and readbyte() function that do as their names suggest. 
+##Methods##
+
+**Constructor**
+
+The constructor initializes the the variables, but does nothing else. 
+*example: xbeeDMapi xb;*
+
+**pktAvailable()**
+
+This checks the inBytes (std::list buffer, defined in xbeeDMapi.h) and 
+looks for complete packets. Once it knows that there is a complete packet in buffer
+it will return true, otherwise it will return false. 
+*example: if (xb.pktAvailable()) { // do stuff }*
+
+**rcvPkt(rcvdPacket &pkt)** 
+
+This function moves the data from the inBytes buffer (a std::list) to the packet
+passed in and returns the packet type as a uint8_t. The pkt structure is defined in
+xbeeDMapi.h. It's attributes will be examined later, in detail. 
+*example: if (xb.rcvPkt(rcvdPacket &pkt) { //do stuff}*
+
+**zeroPktStruct(rcvdPacket &pkt)**
+
+This function ensures all values inside of the packet are zeroed. This is also done
+when rcvPkt is called, but, is added for good measure. 
+
+**makeBCPkt(uint8_t fID = 0x01)**
+
+This function preps the header for the broadcast packet (address of
+0x000000000000FFFE). The frame ID is defaulted to 0x01. 
+*example: xb.makeBCPkt(0x03);*
+
+**loadBCPkt(const std::vector<uint8_t> &data)**
+
+This function takes a vector as an input from which it copies the data to the
+packet's buffer and calculates the checksum. 
+
+**makeUnicastPkt(const address64 &dest, uint8_t fID = 0x01)**
+
+This function is the same concept as loadBCPkt, dest is the address of the
+desitnation node. The address64 class will be explained later in detail. The fID is
+defaulted to 0x01, but can be changed as desired. 
+
+**loadUnicastPkt(const std::vector<uint8_t> &data)**
+
+This function is exactly the same as loadBCPkt. Infact, internally, it just passes
+the data to the loadBCPkt function. It is included to make the code more readable and
+understandable. 
+
+**ATNDPkt()**
+
+Calling this function makes and loads an AT command packet. It already sets up the
+packet to be a "ND" (network discover) packet. 
+
+**sendPkt()**
+
+If a data packet is being sent, then once make/load methods have been called, this
+function transfers all data from the internal buffer and pushes it out (with
+escaping) to the outBytes buffer. 
+
+#TTYserial:#
+
+* A class for dealing with the serial port. It is called with a port and baudrate. 
+
+* It works similar to arduino's serial library. TTY serial provides an available(),
+  sendbyte(), and readbyte() function that do as their names suggest. 
 
 This section will be expanded to have a reference for all functions / variables contained with
 in the classes listed above, but at a later date. 
