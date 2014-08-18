@@ -44,26 +44,26 @@ the end of the project and the final version is being documented.
 #xbeeDMapi:#
 
 * Is a class that prepares packets for transmission and interprets received 
-* packets. In its header two lists are defined, inBytes & outBytes. These are
-* byte streams for ingoing and outgoing bytes.
+  packets. In its header two lists are defined, inBytes & outBytes. These are
+  byte streams for ingoing and outgoing bytes.
 
 * The class is designed to be thread safe and to utilize the inBytes and outBytes
-* buffers, which have been globally defined in xbeeDMapi.h. The purpose for this is
-* to allow any function one wants to make the calls to the serial port and load/empty
-* the buffers. 
+  buffers, which have been globally defined in xbeeDMapi.h. The purpose for this is
+  to allow any function one wants to make the calls to the serial port and load/empty
+  the buffers. 
 
 * Each API frame type has a make/load method. For example, to prepare a broad-
-* cast frame you would do xb.makeBCpkt() followed by xb.loadBCpkt(data). 
+  cast frame you would do xb.makeBCpkt() followed by xb.loadBCpkt(data). 
 
 * The send method takes the last loaded packet and puts the bytes in the outgoing
-* buffer. 
+  buffer. 
 
 * In order to use this class, the class/function responsible for talking to the xbee
-* on the serial port must write its data to the buffers defined in xbeeDMapi.h. These
-* buffers are of the type std::list. The class is written to be thread safe, so
-* threading a worker to monitor the serial port is possible. The mutexes used in all
-* of the functions are also defined in xbeeDMapi.h, called inBytesMutex and
-* outBytesMutex. 
+  on the serial port must write its data to the buffers defined in xbeeDMapi.h. These
+  buffers are of the type std::list. The class is written to be thread safe, so
+  threading a worker to monitor the serial port is possible. The mutexes used in all
+  of the functions are also defined in xbeeDMapi.h, called inBytesMutex and
+  outBytesMutex. 
 
 ##Methods##
 
