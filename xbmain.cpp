@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 	std::vector<uint8_t> data;
 	for (int i = 0; i < 50; i++)
 	{
-		data.pushback(0x68);
+		data.push_back(0x68);
 	}
 
 	for (int i = 0; i < 20000; i++) //20000 packets of 50 bytes each will be 1 Mb of data.
