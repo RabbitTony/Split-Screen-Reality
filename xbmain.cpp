@@ -12,28 +12,14 @@
 #include <time.h>
 
 /*
-   Test 1 (17 Auguest, 2014)
-   	The purpose of this test is to do a complete test of all classes/functions
-	written thus far. 
-
-	Functions under test / results:
-
-	xbeeDMapi :
-		rcvPkt
-		(make/load)BCPkt
-		(make/load)UnicastPkt
-		ATNDPkt
-	xbeeNeighbors :
-		update
-		neighborCount
-		operator[]
-		remove
-		clear
+   Test 2 (18 Auguest, 2014)
+   	The purpose of this test is to attempt a 100 mb transfer.
 */
 
 std::string modem = "/dev/ttyUSB0";
 volatile bool START = false;
 volatile bool STOP = false;
+volatile bool FAIL = false;
 void readerMain(void);
 void w_tty(void);
 
@@ -88,147 +74,21 @@ int main(int argc, char *argv[])
 	/////////////////////////////////////////////////////////////////////////////////////////
 	// Starting tests.
 
-	xb.makeBCPkt();
 	std::vector<uint8_t> data;
-	data.push_back(0x68);
-	data.push_back(0x69);
-	data.push_back(0x68);
-	data.push_back(0x13);
-	xb.loadBCPkt(data);
-	xb.sendPkt();
-	
-	std::cout << "BC packet sent, data was 0x68 0x69 0x68 0x69.\n";
-	time_t start;
-	time_t check;
-	time(&start);
-	time(&check);
-	rcvdPacket pkt;
-	xb.zeroPktStruct(pkt);
-
-	while (difftime(check,start) <= 3.00)
+	for (int i = 0; i < 50; i++)
 	{
-		if (xb.pktAvailable())
-		{
-			if(xb.rcvPkt(pkt) == APIid_TS)
-			{
-				std::cout << "TS status received:\n";
-				printf("Retry count: %d\n", pkt.txRetryCount);
-				printf("Delivery status: 0x%X\n", pkt.deliveryStatus);
-				xb.zeroPktStruct(pkt);
-			}
-			else
-			{
-				std::cout << "Non-TS packet type received.\n";
-			}
-		}
-		time(&check);
-	}
-	
-	std::cout << "Testing unicast data.\n";
-	//Unicast. 
-	address64 ady(0x0013A20040B39D52);
-	printf("%x.%x.%x.%x.%x.%x.%x.%x\n", ady[0], ady[1], ady[2], ady[3], ady[4], ady[5], ady[6], ady[7]);
-	if (xb.makeUnicastPkt(ady, 0x02)) std::cout << "Unicast packet made successfully.\n";
-	//std::vector<uint8_t> data;
-	data.clear();
-	data.push_back(0x68);
-	data.push_back(0x69);
-	data.push_back(0x68);
-	data.push_back(0x69);
-	if (xb.loadUnicastPkt(data)) std::cout << "Unicast packet loaded successfully.\n";
-	if (!xb.sendPkt())
-	{
-		std::cout << "Error with unicast data.\n";
+		data.pushback(0x68);
 	}
 
-
-	time(&start);
-	time(&check);
-	xb.zeroPktStruct(pkt);
-
-	while (difftime(check,start) <= 15.00)
+	for (int i = 0; i < 20000; i++) //20000 packets of 50 bytes each will be 1 Mb of data.
 	{
-		if (xb.pktAvailable())
-		{
-			if(xb.rcvPkt(pkt) == APIid_TS)
-			{
-				std::cout << "TS status received:\n";
-				printf("Retry count: %d\n", pkt.txRetryCount);
-				printf("Delivery status: 0x%X\n", pkt.deliveryStatus);
-				xb.zeroPktStruct(pkt);
-			}
-			else
-			{
-				std::cout << "Non-TS packet type received.\n";
-			}
-		}
-		time(&check);
-	}
-	
-	//test for AT-ND packet.
-
-	xb.ATNDPkt();
-	if(!(xb.sendPkt()))
-	{
-		std::cout << "Error sending ATND packet.\n";
-		STOP = true;
-		port.join();
-		return 0;
+		if (FAIL) return 0;
+		xb.makeBCPkt();
+		xb.loadBCPkt(data);
+		xb.sendPkt();
+		std::cout << "Packet number " << i << " sent.\n";
 	}
 
-	xb.zeroPktStruct(pkt);
-	
-	std::cout << "AT-ND packet sent.\n";
-	xbeeNeighbors nmap;
-
-	time(&start);
-	time(&check);
-
-	while (difftime(check,start) <= 30.0)
-	{
-		if (xb.pktAvailable())
-		{
-			if(xb.rcvPkt(pkt) == APIid_ATCR)
-			{
-				if (pkt.ATCmd[0] == 0x4E && pkt.ATCmd[1] == 0x44)
-				{
-					std::cout << "Found node with following address:\n";
-					printf("%x:%x:%x:%x:%x:%x:%x:%x\n", pkt.from[0], pkt.from[1], pkt.from[2], pkt.from[3],
-							pkt.from[4], pkt.from[5], pkt.from[6], pkt.from[7]);
-					nmap.update(pkt.from);
-				}
-			}
-
-			else
-			{
-				std::cout << "Non-ATCR packet type received.\n";
-			}
-		}
-		time(&check);
-	}
-
-	std::cout << "At end of while loop for AT-ND test, nmap contains " << nmap.neighborCount() << " neighbor(s).\n";
-
-	for(int i = 0; i < nmap.neighborCount(); i++)
-	{
-		address64 adr = nmap[i];
-		printf("N[%d] = %x:%x:%x:%x:%x:%x:%x:%x\n", i, adr[0], adr[1], adr[2], adr[3],
-			adr[4], adr[5], adr[6], adr[7]);
-	}
-	
-	std::cout << "Testing the remove method of xbeeNeighbors.\n";
-
-	if (nmap.remove(0))
-	{
-		std::cout << "Remove successful, neighbor count: " << nmap.neighborCount() << std::endl;
-	}
-
-	else
-	{
-		std::cout << "Error remove neighbor, neighbor count: " << nmap.neighborCount() << std::endl;
-	}
-
-	std::cout << "AT-ND test complete.\n";
 
 	std::cout << "Tests complete, issuing stop request to TTY thread." << std::endl;
 
@@ -292,8 +152,9 @@ void readerMain(void)
 
 	time(&start);
 	time(&check);
+	int n = 0;
 
-	while(difftime(check,start) <= 120.0)
+	while(difftime(check,start) <= 30 && n < 20000)
 	{
 		if(xb.pktAvailable())
 		{
@@ -301,15 +162,9 @@ void readerMain(void)
 
 			if (ptype == APIid_RP)
 			{
-				std::cout << "Received data packet:\n";
-				printf("FROM : %x.%x.%x.%x.%x.%x.%x.%x\n", pkt.from[0], pkt.from[1], pkt.from[2], 
-						pkt.from[3], pkt.from[4], pkt.from[5], pkt.from[6], pkt.from[7]);
-				std::cout << "With data:\n";
-				for (std::vector<uint8_t>::iterator iter = pkt.data.begin(); iter != pkt.data.end(); iter++)
-				{
-					printf("0x%x\n", *iter);
-				}
-
+				n++;
+				std::cout << "Packet number " << n << " received. Datalength = " << pkt.length << std::endl;
+				time(&start);
 			}
 
 			else
