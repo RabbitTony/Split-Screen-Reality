@@ -626,7 +626,6 @@ bool xbeeDMapi::sendPkt()
 {
 	if (_pMade == false || _pLoaded == false) 
 	{
-		clearPktData();
 		return false;
 	}
 
@@ -694,8 +693,6 @@ bool xbeeDMapi::sendPkt()
 	}
 	outBytesMutex.unlock();
 
-	_pLoaded = false;
-	_pMade = false;
 	return true;
 }
 

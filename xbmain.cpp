@@ -80,14 +80,57 @@ int main(int argc, char *argv[])
 		data.push_back(0x68);
 	}
 
-	for (int i = 0; i < 20000; i++) //20000 packets of 50 bytes each will be 1 Mb of data.
+	address64 ady(0x0013A20040B39D52);
+	time_t start, check;
+	bool RECEIVED = false;
+	bool SENDERROR = true;
+	rcvdPacket pkt;
+	xb.zeroPktStruct(pkt);
+
+	time_t timerstart, timerstop;
+	time(&timerstart);
+	for (int i = 0; i < 2000; i++) //sending packets.
 	{
 		if (FAIL) return 0;
-		xb.makeBCPkt();
-		xb.loadBCPkt(data);
+		xb.makeUnicastPkt(ady, 0x01);
+		xb.loadUnicastPkt(data);
 		xb.sendPkt();
-		std::cout << "Packet number " << i << " sent.\n";
+		time(&start);
+		time(&check);
+		RECEIVED = false;
+		SENDERROR = true;
+		while (RECEIVED == false && difftime(check,start) <= 1.0)
+		{
+			if (xb.pktAvailable())
+			{
+				if (xb.rcvPkt(pkt) == APIid_TS)
+				{
+					if (pkt.deliveryStatus == 0x00) 
+					{
+						RECEIVED = true;
+						SENDERROR = false;
+						std::cout << "Packet #" << i << " sent successfuly.\n";
+					}
+				}
+			}
+			time(&check);
+		}
+
+		if (difftime(check,start) <= 1.0 && SENDERROR == true)
+		{
+			std::cout << "Packet send error, return status: ";
+			printf("0x%X\n", pkt.deliveryStatus);
+		}
+
+		else if (difftime(check,start) > 1.0)
+		{
+			std::cout << "Packet response timeout for packet #" << i <<std::endl;
+		}
+		xbeeDMapi::zeroPktStruct(pkt);
 	}
+	time(&timerstop);
+
+	std::cout << "Packet transmission took " << (double)difftime(timerstop,timerstart) << " second(s).\n";
 
 
 	std::cout << "Tests complete, issuing stop request to TTY thread." << std::endl;
@@ -163,13 +206,13 @@ void readerMain(void)
 			if (ptype == APIid_RP)
 			{
 				n++;
-				std::cout << "Packet number " << n << " received. Datalength = " << pkt.length << std::endl;
+				std::cout << "Packet number " << n << " received. Datalength = " << (int)pkt.length << std::endl;
 				time(&start);
 			}
 
 			else
 			{
-				std::cout << "Received packet of type: " << ptype << std::endl;
+			//	std::cout << "Received packet of type: " << ptype << std::endl;
 			}
 
 		}
