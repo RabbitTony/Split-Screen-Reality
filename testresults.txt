@@ -1,0 +1,4 @@
+19 August 2014
+	Tested sending 2000 50byte packets. All sent successfully. 
+	was checking for transmit status messages. Total time: 114 seconds.
+	payload data through rate = 877.2 bytes / second. (1 hop).
