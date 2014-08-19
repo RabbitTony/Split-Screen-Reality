@@ -490,7 +490,8 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 		pkt.from[7] = tbuffer[8];
 		//Receive options
 		pkt.receiveOpts = tbuffer[11];
-
+		//Data length
+		pkt.length = (uint8_t)(tbuffer.size() - 13);
 		//Load the data:
 		for (int i = 12; i < (tbuffer.size() -1); i++)
 		{
@@ -625,7 +626,6 @@ bool xbeeDMapi::sendPkt()
 {
 	if (_pMade == false || _pLoaded == false) 
 	{
-		clearPktData();
 		return false;
 	}
 
@@ -693,8 +693,6 @@ bool xbeeDMapi::sendPkt()
 	}
 	outBytesMutex.unlock();
 
-	_pLoaded = false;
-	_pMade = false;
 	return true;
 }
 
