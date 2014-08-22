@@ -365,6 +365,7 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 	if (it == rcvdBytes.end())
 	{
 		pkt.badlength = true;
+		_processedPktCount--;
 		return 0;
 	}
 
