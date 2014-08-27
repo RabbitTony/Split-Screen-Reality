@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 	// Starting tests.
 
 	std::vector<uint8_t> data;
-	for (int i = 0; i < 50; i++)
+	for (int i = 0; i < 72; i++)
 	{
 		data.push_back(0x68);
 	}
@@ -109,7 +109,8 @@ int main(int argc, char *argv[])
 					{
 						RECEIVED = true;
 						SENDERROR = false;
-						std::cout << "Packet #" << i << " sent successfuly.\n";
+						std::cout << "Packet #" << i << " sent successfuly. ";
+						std::cout << "Retry count = " << (int) pkt.txRetryCount << std::endl;
 					}
 				}
 			}
@@ -146,7 +147,7 @@ int main(int argc, char *argv[])
 void w_tty(void)
 {
 	TTYserial tty;
-	tty.begin(modem, 38400);
+	tty.begin(modem, 57600);
 	
 	if (!(tty.status()))
 	{
