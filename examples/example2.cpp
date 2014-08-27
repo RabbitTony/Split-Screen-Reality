@@ -12,8 +12,8 @@
 #include <time.h>
 
 /*
-   Test 3 (27 Auguest, 2014)
-   	The purpose of this test is to transfer a video.
+   Test 2 (18 Auguest, 2014)
+   	The purpose of this test is to attempt a 100 mb transfer.
 */
 
 std::string modem = "/dev/ttyUSB0";
@@ -74,6 +74,11 @@ int main(int argc, char *argv[])
 	/////////////////////////////////////////////////////////////////////////////////////////
 	// Starting tests.
 
+	std::vector<uint8_t> data;
+	for (int i = 0; i < 72; i++)
+	{
+		data.push_back(0x68);
+	}
 
 	address64 ady(0x0013A20040B39D52);
 	time_t start, check;
@@ -84,42 +89,46 @@ int main(int argc, char *argv[])
 
 	time_t timerstart, timerstop;
 	time(&timerstart);
-	
-	//////Open the buffer
-	int fd = open("vidFIFO", O_RDONLY | O_NOCTTY | O_NONBLOCK);
-
-	if (fd <= 0) 
+	for (int i = 0; i < 2000; i++) //sending packets.
 	{
-		std::cout << "Error opening video file.\n";
-		STOP = true;
-		port.join();
-		return 0;
-	}
-
-	std::vector<uint8_t> vdata;
-	bool GO = true;
-	int n = 0;
-	unsigned char b = 0x00;
-
-	while(GO)
-	{
-		n = read(fd, &b, 1);
-
-		if (n == 1) vdata.push_back((uint8_t)b);
-		if (n == 0) GO = false;
-		if (vdata.size() == 72)
+		if (FAIL) return 0;
+		xb.makeUnicastPkt(ady, 0x01);
+		xb.loadUnicastPkt(data);
+		xb.sendPkt();
+		time(&start);
+		time(&check);
+		RECEIVED = false;
+		SENDERROR = true;
+		while (RECEIVED == false && difftime(check,start) <= 1.0)
 		{
-			xb.makeUnicastPkt(ady);
-			xb.loadUnicastPkt(vdata);
-			vdata.clear();
-			xb.sendPkt();
-			while (!(xb.pktAvailable())) {}
-			xb.rcvPkt(pkt);
+			if (xb.pktAvailable())
+			{
+				if (xb.rcvPkt(pkt) == APIid_TS)
+				{
+					if (pkt.deliveryStatus == 0x00) 
+					{
+						RECEIVED = true;
+						SENDERROR = false;
+						std::cout << "Packet #" << i << " sent successfuly. ";
+						std::cout << "Retry count = " << (int) pkt.txRetryCount << std::endl;
+					}
+				}
+			}
+			time(&check);
 		}
+
+		if (difftime(check,start) <= 1.0 && SENDERROR == true)
+		{
+			std::cout << "Packet send error, return status: ";
+			printf("0x%X\n", pkt.deliveryStatus);
+		}
+
+		else if (difftime(check,start) > 1.0)
+		{
+			std::cout << "Packet response timeout for packet #" << i <<std::endl;
+		}
+		xbeeDMapi::zeroPktStruct(pkt);
 	}
-	
-	
-	///////////////////////////////////////////////End of tests
 	time(&timerstop);
 
 	std::cout << "Packet transmission took " << (double)difftime(timerstop,timerstart) << " second(s).\n";
@@ -188,10 +197,8 @@ void readerMain(void)
 	time(&start);
 	time(&check);
 	int n = 0;
-	
-	int fd = open("vidFIFO", O_WRONLY);
 
-	while(difftime(check,start) <= 60)
+	while(difftime(check,start) <= 30 && n < 20000)
 	{
 		if(xb.pktAvailable())
 		{
@@ -199,12 +206,8 @@ void readerMain(void)
 
 			if (ptype == APIid_RP)
 			{
-				for (std::vector<uint8_t>::iterator iter = pkt.data.begin(); iter != pkt.data.end(); iter++)
-				{
-					unsigned char d = *iter;
-					write(fd, &d, 1);
-				}
-				xbeeDMapi::zeroPktStruct(pkt);
+				n++;
+				std::cout << "Packet number " << n << " received. Datalength = " << (int)pkt.length << std::endl;
 				time(&start);
 			}
 
@@ -220,7 +223,6 @@ void readerMain(void)
 	std::cout << "End of while loop for readerMain()\n";
 
 	STOP = true;
-	close(fd);
 
 	port.join();
 	
