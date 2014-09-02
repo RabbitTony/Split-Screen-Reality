@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <time.h>
+#include <queue>
 
 /*
    Test 3 (27 Auguest, 2014)
@@ -20,8 +21,12 @@ std::string modem = "/dev/ttyUSB0";
 volatile bool START = false;
 volatile bool STOP = false;
 volatile bool FAIL = false;
+std::queue<uint8_t> vidBuffer;
+std::mutex vidBufferMutex;
 void readerMain(void);
 void w_tty(void);
+void w_vidPlayer(std::queue<uint8_t>*, std::mutex*);
+
 
 int main(int argc, char *argv[])
 {
@@ -189,7 +194,7 @@ void readerMain(void)
 	time(&check);
 	int n = 0;
 	
-	int fd = open("vidFIFO", O_WRONLY);
+	std::thread plyr(w_vidPlayer, &vidBuffer, &vidBufferMutex);
 
 	while(difftime(check,start) <= 60)
 	{
@@ -201,8 +206,9 @@ void readerMain(void)
 			{
 				for (std::vector<uint8_t>::iterator iter = pkt.data.begin(); iter != pkt.data.end(); iter++)
 				{
-					unsigned char d = *iter;
-					write(fd, &d, 1);
+					vidBufferMutex.lock();
+					vidBuffer.push(*iter);
+					vidBufferMutex.unlock();
 				}
 				xbeeDMapi::zeroPktStruct(pkt);
 				time(&start);
@@ -220,12 +226,31 @@ void readerMain(void)
 	std::cout << "End of while loop for readerMain()\n";
 
 	STOP = true;
-	close(fd);
 
 	port.join();
+	plyr.join();
 	
-	std::cout << "TTY thread ended.\n";
+	std::cout << "TTY & plyr threads ended.\n";
 
 	return;
+}
+
+void w_vidPlayer(std::queue<uint8_t> *vd, std::mutex *vdm)
+{
+	int fd = open("vidFIFO", O_WRONLY);
+
+	while (!(STOP))
+	{
+		if (vd->size())
+		{
+			vdm->lock();
+			uint8_t byte = vd->front();
+			write(fd, &byte, 1);
+			vd->pop();
+			vdm->unlock();
+		}
+	}
+
+	close(fd);
 }
 
