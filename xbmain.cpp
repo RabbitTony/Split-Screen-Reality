@@ -112,12 +112,13 @@ int main(int argc, char *argv[])
 
 		if (n == 1) vdata.push_back((uint8_t)b);
 		if (n == 0) GO = false;
-		if (vdata.size() == 72)
+		if (vdata.size() >= 72)
 		{
 			xb.makeUnicastPkt(ady);
 			xb.loadUnicastPkt(vdata);
 			vdata.clear();
 			xb.sendPkt();
+			usleep(2);
 			while (!(xb.pktAvailable())) {}
 			xb.rcvPkt(pkt);
 		}
@@ -166,7 +167,7 @@ void w_tty(void)
 		{
 			outBytesMutex.lock();
 			tty.sendbyte(outBytes.front());
-			usleep(1);
+			usleep(2);
 			outBytes.pop_front();
 			outBytesMutex.unlock();
 		}
