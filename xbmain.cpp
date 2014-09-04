@@ -118,9 +118,17 @@ int main(int argc, char *argv[])
 			xb.loadUnicastPkt(vdata);
 			vdata.clear();
 			xb.sendPkt();
-			usleep(2);
+
 			while (!(xb.pktAvailable())) {}
 			xb.rcvPkt(pkt);
+			if (pkt.pType == APIid_TS)
+			{
+				printf("Status: %d\n", pkt.deliveryStatus);
+			}
+			else 
+			{
+				printf("Packet type: %d\n", pkt.pType);
+			}
 		}
 	}
 	
