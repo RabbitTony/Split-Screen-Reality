@@ -80,7 +80,10 @@ int main(int argc, char *argv[])
 	// Starting tests.
 
 
-	address64 ady(0x0013A20040B39D52);
+	//address64 ady(0x0013A20040B39D52);
+	//address64 ady(0x0013A20040B8EC7E)
+	//address64 ady(0x000000000000FFFF);
+	address64 ady(0x0013A20040B39D45);
 	time_t start, check;
 	bool RECEIVED = false;
 	bool SENDERROR = true;
@@ -112,14 +115,18 @@ int main(int argc, char *argv[])
 
 		if (n == 1) vdata.push_back((uint8_t)b);
 		if (n == 0) GO = false;
-		if (vdata.size() >= 72)
+		if (vdata.size() >= 32)
 		{
 			xb.makeUnicastPkt(ady);
+			//xb.makeBCPkt(0x01);
+			//xb.loadBCPkt(vdata);
 			xb.loadUnicastPkt(vdata);
 			vdata.clear();
 			xb.sendPkt();
-
-			while (!(xb.pktAvailable())) {}
+			time_t start, check;
+			time(&start);
+			time(&check);
+			while (xb.pktAvailable() == false && difftime(check, start) <= 1) {time(&check);}
 			xb.rcvPkt(pkt);
 			if (pkt.pType == APIid_TS)
 			{
@@ -128,7 +135,11 @@ int main(int argc, char *argv[])
 			else 
 			{
 				printf("Packet type: %d\n", pkt.pType);
+				if (pkt.badchecksum) std::cout << "Bad checksum.\n";
+				if (pkt.badlength) std::cout << "Bad length.\n";
 			}
+
+			xbeeDMapi::zeroPktStruct(pkt);
 		}
 	}
 	
@@ -152,7 +163,7 @@ int main(int argc, char *argv[])
 void w_tty(void)
 {
 	TTYserial tty;
-	tty.begin(modem, 57600);
+	tty.begin(modem, 38400);
 	
 	if (!(tty.status()))
 	{
@@ -175,7 +186,7 @@ void w_tty(void)
 		{
 			outBytesMutex.lock();
 			tty.sendbyte(outBytes.front());
-			usleep(2);
+			usleep(10);
 			outBytes.pop_front();
 			outBytesMutex.unlock();
 		}
@@ -246,7 +257,7 @@ void readerMain(void)
 
 void w_vidPlayer(std::queue<uint8_t> *vd, std::mutex *vdm)
 {
-	int fd = open("vidFIFO", O_WRONLY);
+	int fd = open("vidFIFO", O_WRONLY | O_CREAT);
 
 	while (!(STOP))
 	{
