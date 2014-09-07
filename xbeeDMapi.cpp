@@ -151,14 +151,11 @@ bool xbeeDMapi::pktAvailable()
 	bool result = false;
 	if (_processedPktCount > 0) result = true;
 	
-	inBytesMutex.lock();
 	//Now we are going to check to make sure we have enough bytes in inBytes for a complete packet. 
 	if (inBytes.size() <= 5)
 	{
-		inBytesMutex.unlock();
 		return result;
 	}
-	inBytesMutex.unlock();
 
 	//The following section checks the inBytes buffer for a complete packet
 	// and if it finds one, it moves it to the rcvdBytes buffer for later processing.

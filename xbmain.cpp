@@ -83,7 +83,8 @@ int main(int argc, char *argv[])
 	//address64 ady(0x0013A20040B39D52);
 	//address64 ady(0x0013A20040B8EC7E)
 	//address64 ady(0x000000000000FFFF);
-	address64 ady(0x0013A20040B39D45);
+	//address64 ady(0x0013A20040B39D45);
+	address64 ady;
 	time_t start, check;
 	bool RECEIVED = false;
 	bool SENDERROR = true;
@@ -109,13 +110,53 @@ int main(int argc, char *argv[])
 	int n = 0;
 	unsigned char b = 0x00;
 
-	while(GO)
-	{
-		n = read(fd, &b, 1);
+	// The following code uses the network discovery packet to find the other node in the 
+	// two node network and sends the video data to that node.
 
-		if (n == 1) vdata.push_back((uint8_t)b);
-		if (n == 0) GO = false;
-		if (vdata.size() >= 32)
+	xb.ATNDPkt();
+	xb.sendPkt();
+	time(&start);
+	time(&check);
+
+	while (GO == true && difftime(check,start) <= 10)
+	{
+		if (xb.pktAvailable()) GO = false;
+		time(&check);
+	}
+
+	if (!(GO))
+	{
+		xbeeDMapi::zeroPktStruct(pkt);
+		xb.rcvPkt(pkt);
+		if (pkt.pType == APIid_ATCR) ady = pkt.from;
+	}
+
+	if (GO)
+	{
+		std::cout << "No neighbor found, using broadcast mode.\n";
+		ady = 0x000000000000FFFF;
+	}
+	
+	GO = true;
+
+	while(GO) // Main data reading loop. This loop reads data from a file and sends it.
+	{
+		int num = 0;
+		while (num < 72)
+		{
+			n = read(fd, &b, 1);
+			if (n == 1) vdata.push_back((uint8_t)b);
+			if (n == 0) 
+				{
+					GO = false;
+					num = 1000;
+				}
+			num++;	
+		}
+		
+
+		
+		if (vdata.size())
 		{
 			xb.makeUnicastPkt(ady);
 			//xb.makeBCPkt(0x01);
@@ -123,20 +164,27 @@ int main(int argc, char *argv[])
 			xb.loadUnicastPkt(vdata);
 			vdata.clear();
 			xb.sendPkt();
-			time_t start, check;
 			time(&start);
 			time(&check);
-			while (xb.pktAvailable() == false && difftime(check, start) <= 1) {time(&check);}
-			xb.rcvPkt(pkt);
-			if (pkt.pType == APIid_TS)
+			bool WAIT = true;
+			while (WAIT && difftime(check, start) <= 5)
+			{
+				if (xb.pktAvailable()) 
+				{
+					xb.rcvPkt(pkt);
+					if (pkt.pType != 0x00) WAIT = false;
+				}
+				time(&check);
+			}
+			if (!(WAIT)) xb.rcvPkt(pkt);
+			if (pkt.pType == APIid_TS && WAIT == false)
 			{
 				printf("Status: %d\n", pkt.deliveryStatus);
 			}
 			else 
 			{
-				printf("Packet type: %d\n", pkt.pType);
-				if (pkt.badchecksum) std::cout << "Bad checksum.\n";
-				if (pkt.badlength) std::cout << "Bad length.\n";
+				std::cout << "Transmit Status not received. pType = " << pkt.pType << ".\n";
+				if (WAIT == false) std::cout << "WAIT IS FALSE!!!!!!\n";
 			}
 
 			xbeeDMapi::zeroPktStruct(pkt);
@@ -146,6 +194,7 @@ int main(int argc, char *argv[])
 	
 	///////////////////////////////////////////////End of tests
 	time(&timerstop);
+	close(fd);
 
 	std::cout << "Packet transmission took " << (double)difftime(timerstop,timerstart) << " second(s).\n";
 
@@ -186,7 +235,7 @@ void w_tty(void)
 		{
 			outBytesMutex.lock();
 			tty.sendbyte(outBytes.front());
-			usleep(10);
+			usleep(1);
 			outBytes.pop_front();
 			outBytesMutex.unlock();
 		}
@@ -221,7 +270,7 @@ void readerMain(void)
 		if(xb.pktAvailable())
 		{
 			uint8_t ptype = xb.rcvPkt(pkt);
-
+			clock_t ticks = clock();
 			if (ptype == APIid_RP)
 			{
 				for (std::vector<uint8_t>::iterator iter = pkt.data.begin(); iter != pkt.data.end(); iter++)
@@ -232,6 +281,7 @@ void readerMain(void)
 				}
 				xbeeDMapi::zeroPktStruct(pkt);
 				time(&start);
+				printf("Packet processing took: %4.3f seconds.\n", ((float)(ticks - clock()) / CLOCKS_PER_SEC));
 			}
 
 			else
