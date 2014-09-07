@@ -91,8 +91,7 @@ int main(int argc, char *argv[])
 	rcvdPacket pkt;
 	xb.zeroPktStruct(pkt);
 
-	time_t timerstart, timerstop;
-	time(&timerstart);
+	clock_t timerstart, timerstop;
 	
 	//////Open the buffer
 	int fd = open("vidFIFO", O_RDONLY | O_NOCTTY | O_NONBLOCK);
@@ -129,6 +128,11 @@ int main(int argc, char *argv[])
 		xbeeDMapi::zeroPktStruct(pkt);
 		xb.rcvPkt(pkt);
 		if (pkt.pType == APIid_ATCR) ady = pkt.from;
+		else 
+		{
+			std::cout << "No neighbor found, using broadcast mode.\n";
+			ady = 0x000000000000FFFF;
+		}
 	}
 
 	if (GO)
@@ -139,6 +143,7 @@ int main(int argc, char *argv[])
 	
 	GO = true;
 
+	timerstart = clock();
 	while(GO) // Main data reading loop. This loop reads data from a file and sends it.
 	{
 		int num = 0;
@@ -183,7 +188,7 @@ int main(int argc, char *argv[])
 			}
 			else 
 			{
-				std::cout << "Transmit Status not received. pType = " << pkt.pType << ".\n";
+				std::cout << "Transmit Status not received. pType = " << std::hex << pkt.pType << ".\n";
 				if (WAIT == false) std::cout << "WAIT IS FALSE!!!!!!\n";
 			}
 
@@ -193,10 +198,11 @@ int main(int argc, char *argv[])
 	
 	
 	///////////////////////////////////////////////End of tests
-	time(&timerstop);
+	timerstop = clock();
+
 	close(fd);
 
-	std::cout << "Packet transmission took " << (double)difftime(timerstop,timerstart) << " second(s).\n";
+	std::cout << "Packet transmission took " << (float)(timerstop - timerstart)/CLOCKS_PER_SEC << " second(s).\n";
 
 
 	std::cout << "Tests complete, issuing stop request to TTY thread." << std::endl;
