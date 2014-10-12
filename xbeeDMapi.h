@@ -142,11 +142,11 @@ class xbeeNeighbors
 	public:
 		bool update(const address64&);
 		int neighborCount();
+		int numberOfNeighbor(const address64&);
 		address64& operator[](const int);
 		bool remove(int);
 		bool clear();
 };
-
 
 void outDebug(void);
 void inDebug(void);

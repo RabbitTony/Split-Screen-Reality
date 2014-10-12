@@ -1,0 +1,30 @@
+Tasks:
+
+Functions:
+- Serial main
+- RF main
+- function to get 72 bytes of video data
+- function to write 72 bytes of vieo data
+
+Classes:
+- UIMon_thread
+- videoRecordAndSend
+
+Flags:
+- Send video
+- Display video
+- Stop video
+- Request video 
+
+Global Types:
+- A structure that contains the basics needed to construct the various RF packets
+- A buffer of RF packet structs 
+
+Threads:
+- serial communication
+- RF Rx/Tx
+	- This is to wrap packets
+	- Process incoming
+	- Prep outgoing
+- UI monitor
+- Video recording
