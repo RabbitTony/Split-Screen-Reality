@@ -6,6 +6,9 @@
 #include <string>
 #include "xbeeDMapi.h"
 
+#ifndef XBMAIN-HDR
+#define XBMAIN-HDR
+
 //Data structures & constants. 
 extern struct globalFlags {
 	bool sendVideo;
@@ -53,8 +56,9 @@ class VCR_threaded
 	// end to the file has been received, to ensure that OMX player will actually play the file. 
 
 	private:
-		std::queue<RFPacketRequest> *_RFOutgoingFIFO;
-		std::queue<TFPacketRequest> _cassetteTape; //Funny no? This holds either the incoming 72 bytes or the outgoing 72 bytes. 
+		std::queue<RFPacketRequest>* _RFOutgoingFIFO;
+		std::queue<RFPacketRequest> _cassetteTape; //Funny no? This holds either the incoming 72 bytes or the outgoing 72 bytes. 
+		RFPacketRequest currentRequest;
 		volatile bool _STOP, _RECORD, _PLAY, _threadSTOP, _POWER;
 		std::mutex _m; // This keeps the dataraces away...
 		std::thread _VCRThread;
@@ -79,10 +83,10 @@ class VCR_threaded
 
 		char play(const RFPacketRequest& invid); // Supplies the packet containing the next 72 bytes of data.
 		char record(const RFPacketRequest& outvid); // Requests 1 second of video, packet contains the address. will push out packets into the RF 
-			//request buffer. 
+			//request buffer. IE the record function fills the outvid packet so that the caller can push it to the buffer/FIFO. 
 		char stop(void); // Stops sending and/or receiving video. 
 		void VCRMain(void); // This monitors the flags and responds to them. 
-		void VCDIndicator(void); // Checks the status of the thread class. 
+		char VCRIndicator(void); // Checks the status of the thread class. 
 		void power(void)
 		{	
 			if (!(_POWER))
@@ -100,3 +104,5 @@ class VCR_threaded
 			}
 		}
 };
+#endif
+
