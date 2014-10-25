@@ -5,12 +5,13 @@
 #include <mutex>
 #include <string>
 #include "xbeeDMapi.h"
+#include <cstdint>
 
 #ifndef XBMAIN-HDR
 #define XBMAIN-HDR
 
 //Data structures & constants. 
-extern struct globalFlags {
+struct globalFlags {
 	bool sendVideo;
 	address64 addressForVideoRequestingNode;
 	bool displayVideo;
@@ -19,15 +20,24 @@ extern struct globalFlags {
 	bool stopVideo;
 };
 
-const std::string &infile = "inVideo";
-const std::string &outfile = "outVideo";
+extern const std::string &infile = "inVideo";
+extern const std::string &outfile = "outVideo";
 const int &buttonForNode1 = 1 //relates to the wiringPI pinout.
 const int &buttonForNode2 = 4 // " "
 const int &buttonForNode3 = 5 // " "
 const int &buttonForStop = 6 //  " "
 
+//Define the packet request types:
+
+const uint8_t& task_videoIn = 0;
+const uint8_t& task_videoOut = 1;
+const uint8_t& task_Stop = 3;
+const uint8_t& task_requestVideo = 4;
+const uint8_t& task_networkMapUpdate = 5;
+
+
 struct RFPacketRequest {
-	int requestType;
+	uint8_t requestType;
 	address64 addressForRequest; //Depending on whether this is incoming or outgoing, could be destination or source.
 	std::vector<uint8_t> payload;
 };

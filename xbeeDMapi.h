@@ -55,7 +55,7 @@ class xb_except : public std::exception
 struct rcvdPacket 
 {
 	address64 from;
-	uint8_t length;
+	uint8_t length; //Length of the packet's UNESCAPED payload. 
 	uint8_t pType;
 	int txRetryCount;
 	uint8_t deliveryStatus;
