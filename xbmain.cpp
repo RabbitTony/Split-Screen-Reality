@@ -21,7 +21,7 @@ std::string modem = "/dev/ACM0";
 globalFlags gf;
 bool TTYFailure = false;
 bool globalStop = false;
-bool START = false
+bool START = false;
 
 int main(int argc, char* argv[])
 {

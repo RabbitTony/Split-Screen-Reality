@@ -7,8 +7,8 @@
 #include "xbeeDMapi.h"
 #include <cstdint>
 
-#ifndef XBMAIN-HDR
-#define XBMAIN-HDR
+#ifndef XBMAINHDR
+#define XBMAINHDR
 
 //Data structures & constants. 
 struct globalFlags {
@@ -22,10 +22,10 @@ struct globalFlags {
 
 extern const std::string &infile = "inVideo";
 extern const std::string &outfile = "outVideo";
-const int &buttonForNode1 = 1 //relates to the wiringPI pinout.
-const int &buttonForNode2 = 4 // " "
-const int &buttonForNode3 = 5 // " "
-const int &buttonForStop = 6 //  " "
+const int &buttonForNode1 = 1; //relates to the wiringPI pinout.
+const int &buttonForNode2 = 4; // " "
+const int &buttonForNode3 = 5; // " "
+const int &buttonForStop = 6; //  " "
 
 //Define the packet request types:
 
