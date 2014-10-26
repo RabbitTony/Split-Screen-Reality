@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 	if (argc == 2) modem = argv[1];
 	
 	gf.sendVideo = gf.displayVideo = gf.requestVideo = false;
-	gf.addressForVideoRequestingNode = addressToRequestVideoFrom = 0x00;
+	gf.addressForVideoRequestingNode = gf.addressToRequestVideoFrom = 0x00;
 	
 	std::thread tty_t(TTYMonitor_main);
 
@@ -93,7 +93,7 @@ void TTYMonitor_main(void)
 		if (outBytes.size() && globalStop == false)
 		{
 			outBytesMutex.lock();
-			tty.sendByte(outBytes.front());
+			tty.sendbyte(outBytes.front());
 			usleep(1);
 			outBytes.pop_front();
 			outBytesMutex.unlock();
