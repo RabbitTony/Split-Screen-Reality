@@ -120,20 +120,21 @@ void RFMonitor_main(void)
 			uint8_t ptype = xb.rcvPkt(inpkt);
 			if (ptype == APIid_RP)
 			{
-				if (inpkt.length == 72 && gf.displayVideo == true) // Packet of video. 
+				if (inpkt.length > 5 && gf.displayVideo == true) // Packet of video.
 				{
 					incomingVideoMutex.lock();
 					incomingVideo.push(inpkt.data);
 					incomingVideoMutex.unlock();
 				}
 
-				else if (inpkt.length == 1) // This is a command packet
+				else if (inpkt.length == 5 && inpkt.data[1] == 0x02 && inpkt.data[2] == 0x03
+						&& inpkt.data[3] == 0x05 && inpkt.data[4] == 0x07) // This is a command packet
 				{
 					RFPacketRequest ipr;
 					ipr.requestType = inpkt.data.front();
 					ipr.addressForRequest = inpkt.from;
 					RFIncomingFIFOMutex.lock();
-					RFIncomingFIFOMutex.push(inpkt);
+					RFIncomingFIFO.push(ipr);
 					RFIncomingFIFOMutex.unlock();
 				}
 			}
@@ -171,7 +172,7 @@ void RFMonitor_main(void)
 				{
 					if (xb.pktAvailable())
 					{
-						uint8_t ptype = xb.rcvPacket(inpkt);
+						uint8_t ptype = xb.rcvPkt(inpkt);
 						if (ptype == APIid_TS && inpkt.deliveryStatus == 0x00)
 						{
 							DONE = true;
@@ -201,27 +202,95 @@ void UIMonitor_main(void)
 	return;
 }
 
-char VCR_threaded::play(const RFPacketRequest& invid)
+bool VCR_threaded::play(const RFPacketRequest& invid)
 {
 	//If recording, fail
 	//Set playing and store current request. 
+	if (_RECORD == true || _threadSTOP == true || _POWER == false)
+	{
+		return false;
+	}
 
-	return 0;
+	//First check the amount of data. if n < 72 bytes, this is the last packet
+	//for this segment.
+
+	int n = invid.payload.size();
+
+	if (n <= 5) return false;
+
+	if (_STOP == false) // If the stop button has been pressed.
+	{
+		if (n > 5) _PLAY = true;
+		if (n == 72) // This is a full video packet and checking for trailing bytes isn't required.
+		{
+			_m.lock();
+			_cassetteTape.push(invid.payload); //Actually writing to file and playing happens in VCRMain
+			_m.unlock();
+			return true;
+		}
+		if (n > 5 && n < 72)
+		{
+			int lastbyte = n - 1;
+			bool DONE = false;
+			while(lastbyte > 4 && DONE == false) //Check to see how many bytes are actually present.
+			{
+				DONE = true;
+				if (invid.payload[lastbyte] == 0x11)
+				{
+					if (invid.payload[lastbyte - 1] == 0x13) DONE = false;
+				}
+				if (invid.payload[lastbyte] == 0x13)
+				{
+					if (invid.payload[lastbyte - 1] == 0x11) DONE = false;
+				}
+
+				if (DONE == false) lastbyte--;
+			}
+
+			//Now check for possible fail conditions (unlikely but who knows)
+			if (DONE == false)
+			{
+				_PLAY = false;
+				return false;
+			}
+
+			std::vector<uint8_t> tempinvid;
+			for (int i = 0; i < lastbyte; i++) //lastbyte technically is 1 after the last byte.
+				tempinvid.push_back(invid.payload[i]);
+			_m.lock();
+			_cassetteTape.push(tempinvid);
+			_m.unlock();
+			return true;
+		}
+	}
+	return false;
 }
 
-char VCR_threaded::record(const RFPacketRequest& outvid)
+bool VCR_threaded::record(const RFPacketRequest& outvid)
 {
 	//If playing, fail
 	//Set recording and store current request. 
+	if (_PLAY == true || _threadSTOP == true || _POWER == false)
+		return false;
+	if (_STOP == false)
+	{
+		_RECORD = true;
 
-	return 0;
+		if (toAddress == outvid.addressForRequest) return true;
+		else if (toAddress == 0x00)
+		{
+			toAddress = outvid.addressForRequest;
+			return true;
+		}
+	}
+	return false;
 }
 
 void VCR_threaded::VCRMain(void)
 {
 	
 	//Looping
-	//if playing and full video recieved, play the segment
+	//if playing and full video received, play the segment
 	//if recording keep sending video until segment is over
 
 	return;

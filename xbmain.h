@@ -20,8 +20,8 @@ struct globalFlags {
 	bool stopVideo;
 };
 
-extern const std::string &infile = "inVideo";
-extern const std::string &outfile = "outVideo";
+const std::string &infile = "inVideo";
+const std::string &outfile = "outVideo";
 const int &buttonForNode1 = 1; //relates to the wiringPI pinout.
 const int &buttonForNode2 = 4; // " "
 const int &buttonForNode3 = 5; // " "
@@ -58,7 +58,7 @@ std::queue<std::vector<uint8_t>> incomingVideo; // May not need this after all..
 void TTYMonitor_main(void); //Controls sending the bytes to the xbee over UART.
 void RFMonitor_main(void); //Monitors the global flags and RFOutGoingFIFO while updating RFIncomingFIFO;
 void UIMonitor_main(void); //Thread to look for user input. 
-void control_main(void); //Thread to maintain overall controll of the program and process all the buffers. 
+void control_main(void); //Thread to maintain overall control of the program and process all the buffers.
 
 // Classes
 class VCR_threaded 
@@ -67,23 +67,27 @@ class VCR_threaded
 
 	private:
 		std::queue<RFPacketRequest>* _RFOutgoingFIFO;
-		std::queue<RFPacketRequest> _cassetteTape; //Funny no? This holds either the incoming 72 bytes or the outgoing 72 bytes. 
-		RFPacketRequest currentRequest;
+		std::queue<std::vector<uint8_t>> _cassetteTape; //Funny no? This holds either the incoming 72 bytes or the outgoing 72 bytes.
 		volatile bool _STOP, _RECORD, _PLAY, _threadSTOP, _POWER;
-		std::mutex _m; // This keeps the dataraces away...
+		address64 toAddress;
+		int lastNumberOfVideoBytesRead;
+		std::mutex _m; // This keeps the data races away...
 		std::thread _VCRThread;
 	public:
 		VCR_threaded() : _VCRThread()
 		{
 			_STOP = _RECORD = _PLAY = _threadSTOP = _POWER = false;
 			_RFOutgoingFIFO = &RFOutgoingFIFO;
+			lastNumberOfVideoBytesRead = 0;
+			toAddress = 0x00;
 		}
 		
 		VCR_threaded(std::queue<RFPacketRequest> *out) : _VCRThread()
 		{
 			_STOP = _RECORD = _PLAY = _threadSTOP = _POWER = false;
 			_RFOutgoingFIFO = out;
-			_RFIncomingFIFO = in;
+			lastNumberOfVideoBytesRead = 0;
+			toAddress = 0x00;
 		}
 
 		//This thread class is designed to operate in only 1 state at a time. This means that the class is either
@@ -91,8 +95,8 @@ class VCR_threaded
 		//time the state changes. The only purpose for having the _cassetTape buffer is to ensure that the thread 
 		//can keep up with the data that is coming in. 
 
-		char play(const RFPacketRequest& invid); // Supplies the packet containing the next 72 bytes of data.
-		char record(const RFPacketRequest& outvid); // Requests 1 second of video, packet contains the address. will push out packets into the RF 
+		bool play(const RFPacketRequest& invid); // Supplies the packet containing the next 72 bytes of data.
+		bool record(const RFPacketRequest& outvid); // Requests 1 second of video, packet contains the address. will push out packets into the RF
 			//request buffer. IE the record function fills the outvid packet so that the caller can push it to the buffer/FIFO. 
 		char stop(void); // Stops sending and/or receiving video. 
 		void VCRMain(void); // This monitors the flags and responds to them. 
