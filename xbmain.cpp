@@ -14,6 +14,10 @@
 #include "TTYserial.h"
 #include "xbmain.h"
 #include "stopwatch.h"
+#include <fcntl.h>
+#include <strings.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 
 // Global variables
@@ -37,6 +41,7 @@ int main(int argc, char* argv[])
 	gf.addressForVideoRequestingNode = gf.addressToRequestVideoFrom = 0x00;
 	
 	std::thread tty_t(TTYMonitor_main);
+	std::thread controlMain_t(control_main);
 
 	START = true;
 
@@ -47,6 +52,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
+
 	return 0;
 }
 
@@ -54,7 +60,81 @@ void control_main(void)
 {
 	//Setup the VCR. 
 
-	//Check the stuff. 
+	//Check the stuff and monitor the RF fifos.
+	// RFFifos => RF information and packets
+	// todoFIFO => information from the UI.
+	// The UI thread will put information into the todoFIFO.
+
+	while(!(START)) {}
+	VCR_threaded vcr;
+	vcr.power();
+	bool FIRSTRUN = true;
+	stopwatch nmapRefreshTimer;
+
+	while (globalStop == false)
+	{
+
+		if (FIRSTRUN || nmapRefreshTimer.read() >= 20000)
+		{
+			if (FIRSTRUN) FIRSTRUN = false;
+			else nmapRefreshTimer.reset();
+			RFPacketRequest rfp;
+			rfp.requestType = task_networkMapUpdate;
+			rfp.addressForRequest = 0x00;
+			RFOutgoingFIFOMutex.lock();
+			RFOutgoingFIFO.push(rfp);
+			RFOutgoingFIFOMutex.unlock();
+		}
+
+		if (incomingVideo.size())
+		{
+			RFPacketRequest rfp;
+			incomingVideoMutex.lock();
+			rfp.payload = incomingVideo.front();
+			incomingVideo.pop();
+			incomingVideoMutex.unlock();
+			rfp.requestType = task_videoIn;
+			vcr.play(rfp);
+		}
+
+		if (todoFIFO.size())
+		{
+			globalFlags cr;
+			todoFIFO.pop();
+
+			if (cr.requestVideo)
+			{
+				RFPacketRequest rfp;
+
+				rfp.addressForRequest = cr.addressToRequestVideoFrom;
+				rfp.requestType = task_videoOut;
+				RFOutgoingFIFOMutex.lock();
+				RFOutgoingFIFO.push(rfp);
+				RFOutgoingFIFOMutex.unlock();
+			}
+
+			else if (cr.stopVideo)
+			{
+				gf.stopVideo = true;
+				RFPacketRequest rfp;
+				rfp.addressForRequest = vcr.getToAddress();
+				rfp.requestType = task_Stop;
+				rfp.payload = task_Stop;
+				RFOutgoingFIFOMutex.lock();
+				RFOutgoingFIFO.push(rfp);
+				RFOutgoingFIFOMutex.unlock();
+				vcr.stop();
+
+
+			}
+		}
+
+
+
+
+
+
+	}
 	
 	return;
 }
@@ -220,7 +300,11 @@ bool VCR_threaded::play(const RFPacketRequest& invid)
 
 	if (_STOP == false) // If the stop button has been pressed.
 	{
-		if (n > 5) _PLAY = true;
+		if (n > 5)
+		{
+			_PLAY = true;
+			gf.displayVideo = true;
+		}
 		if (n == 72) // This is a full video packet and checking for trailing bytes isn't required.
 		{
 			_m.lock();
@@ -275,6 +359,7 @@ bool VCR_threaded::record(const RFPacketRequest& outvid)
 	if (_STOP == false)
 	{
 		_RECORD = true;
+		gf.requestVideo = true;
 
 		if (toAddress == outvid.addressForRequest) return true;
 		else if (toAddress == 0x00)
@@ -292,19 +377,124 @@ void VCR_threaded::VCRMain(void)
 	//Looping
 	//if playing and full video received, play the segment
 	//if recording keep sending video until segment is over
+	while (globalStop == false && _POWER == true)
+	{
+		if (_PLAY == true)
+		{
+			if (lastNumberOfVideoBytesRead < 72)
+			{
+				int fd = open(infile.c_str(), O_WRONLY | O_CREAT);
+				std::vector<uint8_t>::iterator it;
+				while(!(_cassetteTape.empty()))
+				{
+					char byte = 0;
+					for (it = _cassetteTape.front().begin(); it != _cassetteTape.front().end(); it++)
+					{
+						byte = *it;
+						write(fd, &byte,1);
+					}
+					_cassetteTape.pop();
+				}
+				close(fd);
+				_PLAY = false;
+				//make a system call to run OMX player.
+				lastNumberOfVideoBytesRead = 0;
+			}
+		}
+		if (_RECORD == true && toAddress != 0x00)
+		{
+			//Make a system call to raspivid.
+			//Read from the fifo.
+
+			//system call goes here......
+
+			int fd = open(infile.c_str(), O_RDONLY);
+			if (fd <= 0)
+			{
+				std::cout << "Error opening FIFO.\n";
+				return;
+			}
+
+			bool GO = true;
+
+			while(GO)
+			{
+				std::vector<uint8_t> v;
+				bool GOGO = true;
+				while(v.size() < 72 && GOGO == true);
+				{
+					uint8_t b = 0;
+					int n = read(fd, &b, 1);
+					if (n == 1) v.push_back(b);
+					else GOGO = false;
+				}
+
+				if (v.size() > 5 && v.size() <= 72)
+				{
+					RFPacketRequest rfp;
+					rfp.requestType = task_videoOut;
+					rfp.addressForRequest = toAddress;
+					rfp.payload = v;
+					RFOutgoingFIFOMutex.lock();
+					_RFOutgoingFIFO->push(rfp);
+					RFOutgoingFIFOMutex.unlock();
+				}
+
+				if (v.size() <= 5)
+				{
+					uint8_t lastbyte = 0x13;
+					while (v.size() <= 5)
+					{
+						if (lastbyte == 0x13)
+						{
+							v.push_back(0x11);
+							lastbyte = 0x11;
+						}
+
+						else if (lastbyte == 0x11)
+						{
+							v.push_back(0x13);
+							lastbyte = 0x13;
+						}
+
+					}
+
+					RFPacketRequest rfp;
+					rfp.requestType = task_videoOut;
+					rfp.addressForRequest = toAddress;
+					rfp.payload = v;
+					_RFOutgoingFIFO->push(rfp);
+
+				}
+
+				if (v.size() < 72)
+				{
+					GO = false;
+					_RECORD = false;
+					toAddress = 0x00;
+				}
+
+			}
+		}
+	}
 
 	return;
-}
-
-char VCR_threaded::VCRIndicator(void)
-{
-	//return flags for recording, playing, or stopped. 
-	return status;
 }
 
 char VCR_threaded::stop(void)
 {
 	//stop recording or playing.
-	return;
+	_m.lock();
+	_PLAY = false;
+	_RECORD = false;
+	_STOP = true;
+	lastNumberOfVideoBytesRead = 0;
+	toAddress = 0x00;
+	while(!(_cassetteTape.empty())) _cassetteTape.pop();
+	_m.unlock();
+	gf.displayVideo = gf.requestVideo = false;
+	gf.sendVideo = false;
+
+	return 0;
 }
 

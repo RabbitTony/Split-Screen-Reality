@@ -51,8 +51,8 @@ std::mutex RFOutgoingFIFOMutex, RFIncomingFIFOMutex;
 std::queue<RFPacketRequest> RFOutgoingFIFO;
 std::queue<RFPacketRequest> RFIncomingFIFO;
 std::mutex outgoingVideoMutex, incomingVideoMutex;
-std::queue<std::vector<uint8_t>> outgoingVideo; 
-std::queue<std::vector<uint8_t>> incomingVideo; // May not need this after all....
+std::queue<std::vector<uint8_t> > outgoingVideo;
+std::queue<std::vector<uint8_t> > incomingVideo; // May not need this after all....
 
 // Functions
 void TTYMonitor_main(void); //Controls sending the bytes to the xbee over UART.
@@ -100,11 +100,14 @@ class VCR_threaded
 			//request buffer. IE the record function fills the outvid packet so that the caller can push it to the buffer/FIFO. 
 		char stop(void); // Stops sending and/or receiving video. 
 		void VCRMain(void); // This monitors the flags and responds to them. 
-		char VCRIndicator(void); // Checks the status of the thread class. 
+		//char VCRIndicator(void); // Checks the status of the thread class.
+		const address64& getToAddress(void) { return toAddress; }
 		void power(void)
 		{	
+
 			if (!(_POWER))
 			{
+				while (!(START)) {}
 				_POWER = true;
 				_threadSTOP = false;
 				_VCRThread = std::thread(&VCR_threaded::VCRMain, this);
