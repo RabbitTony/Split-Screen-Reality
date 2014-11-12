@@ -31,7 +31,7 @@ const int &buttonForStop = 6; //  " "
 
 const uint8_t& task_videoIn = 0;
 const uint8_t& task_videoOut = 1;
-const uint8_t& task_Stop = 3;
+const uint8_t& task_stop = 3;
 const uint8_t& task_requestVideo = 4;
 const uint8_t& task_networkMapUpdate = 5;
 
