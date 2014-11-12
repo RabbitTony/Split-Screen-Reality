@@ -103,7 +103,7 @@ void control_main(void)
 			else nmapRefreshTimer.reset();
 			RFPacketRequest rfp;
 			rfp.requestType = task_networkMapUpdate;
-			rfp.addressForRequest = BCaddr;
+			rfp.addressForRequest = BCadr;
 			RFOutgoingFIFOMutex.lock();
 			RFOutgoingFIFO.push(rfp);
 			RFOutgoingFIFOMutex.unlock();
