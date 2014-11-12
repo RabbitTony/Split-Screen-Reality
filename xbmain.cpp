@@ -120,7 +120,29 @@ void control_main(void)
 			vcr.play(rfp);
 		}
 
-		if (todoFIFO.size())
+		if (RFIncomingFIFO.size()) //These are remote requests / commands.
+		{
+			RFPacketRequest ipr;
+			RFIncomingFIFOMutex.lock();
+			ipr = RFIncomingFIFO.front();
+			RFIncomingFIFO.pop();
+			RFIncomingFIFOMutex.unlock();
+			
+			if (ipr.requestType == task_stop) //Remote stop request.
+			{
+				vcr.stop();
+			}
+
+			else if (ipr.requestType == task_requestVideo)
+			{
+				vcr.record(ipr);
+			}
+		}
+
+
+
+
+		if (todoFIFO.size()) //These are commands from the LOCAL node.
 		{
 			globalFlags cr;
 			todoFIFO.pop();
@@ -136,19 +158,17 @@ void control_main(void)
 				RFOutgoingFIFOMutex.unlock();
 			}
 
-			else if (cr.stopVideo)
+			else if (cr.stopVideo) //This is a stop request from the LOCAL node.
 			{
 				gf.stopVideo = true;
 				RFPacketRequest rfp;
 				rfp.addressForRequest = vcr.getToAddress();
-				rfp.requestType = task_Stop;
-				rfp.payload = task_Stop;
+				rfp.requestType = task_stop;
+				rfp.payload = task_stop;
 				RFOutgoingFIFOMutex.lock();
 				RFOutgoingFIFO.push(rfp);
 				RFOutgoingFIFOMutex.unlock();
-				vcr.stop();
-
-
+				vcr.stop();				
 			}
 		}
 
@@ -223,7 +243,7 @@ void RFMonitor_main(void)
 			uint8_t ptype = xb.rcvPkt(inpkt);
 			if (ptype == APIid_RP)
 			{
-				if (inpkt.length > 5 && gf.displayVideo == true) // Packet of video.
+				if (inpkt.length > 5) // Packet of video.
 				{
 					incomingVideoMutex.lock();
 					incomingVideo.push(inpkt.data);
@@ -232,7 +252,7 @@ void RFMonitor_main(void)
 
 				else if (inpkt.length == 5 && inpkt.data[1] == 0x02 && inpkt.data[2] == 0x03
 						&& inpkt.data[3] == 0x05 && inpkt.data[4] == 0x07) // This is a command packet
-				{
+				{ //This is handled in control main. 
 					RFPacketRequest ipr;
 					ipr.requestType = inpkt.data.front();
 					ipr.addressForRequest = inpkt.from;
@@ -268,10 +288,10 @@ void RFMonitor_main(void)
 				xb.sendPkt();
 					
 				//check for the acknowledgement. 
-				stopwatch to;
+				stopwatch sendTimeOut;
 				bool DONE = false;
 
-				while (to.read() <= 1000 && DONE == false)
+				while (sendTimeOut.read() <= 1000 && DONE == false)
 				{
 					if (xb.pktAvailable())
 					{
@@ -279,9 +299,13 @@ void RFMonitor_main(void)
 						if (ptype == APIid_TS && inpkt.deliveryStatus == 0x00)
 						{
 							DONE = true;
+							std::cout << "Packet sent successfully to: ";
+							printf("%x:%x:%x:%x:%x:%x:%x:%x\n", opr.addressForRequest[0], opr.addressForRequest[1],
+									opr.addressForRequest[2], opr.addressForRequest[3], opr.addressForRequest[4],
+									opr.addressForRequest[5], opr.addressForRequest[6], opr.addressForRequest[7]);
 						}
 
-						// Need to add some code for repeating the sending. 
+						// Add code for repeating transmission. 
 					}
 				}
 			}
