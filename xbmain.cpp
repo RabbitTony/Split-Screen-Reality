@@ -164,7 +164,13 @@ void control_main(void)
 				RFPacketRequest rfp;
 				rfp.addressForRequest = vcr.getToAddress();
 				rfp.requestType = task_stop;
-				rfp.payload = task_stop;
+				std::vector<uint8_t> v;
+				v.push_back(task_stop);
+				v.push_back(0x02);
+				v.push_back(0x03);
+				v.push_back(0x05);
+				v.push_back(0x07);
+				rfp.payload = v;
 				RFOutgoingFIFOMutex.lock();
 				RFOutgoingFIFO.push(rfp);
 				RFOutgoingFIFOMutex.unlock();
