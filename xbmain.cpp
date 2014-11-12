@@ -326,21 +326,31 @@ void UIMonitor_main(void)
 {
 	//Start running. 
 	while(START == false) {}
+
+	bool USED = false;
+	bool FIRSTRUN =true;
+	globalFlags tdi;
+
 	while(globalStop == false)
 	{
-		globalFlags tdi;
-		tdi.stopVideo = false;
-		tdi.sendVideo = false;
-		tdi.addressForVideoRequestingNode = 0x00;
-		tdi.addressToRequestVideoFrom = 0x00;
-		tdi.displayVideo = false;
-		tdi.requestVideo = false;
+		if (USED == true || FIRSTRUN == true)
+		{
+			FIRSTRUN = false;
+			USED = false;
+			tdi.stopVideo = false;
+			tdi.sendVideo = false;
+			tdi.addressForVideoRequestingNode = 0x00;
+			tdi.addressToRequestVideoFrom = 0x00;
+			tdi.displayVideo = false;
+			tdi.requestVideo = false;
+		}
 
 		if (userInput.stop == true)
 		{
 			userInput.stop = false;
 			tdi.stopVideo = true;
 			todoFIFO.push(tdi);
+			USED = true;
 		}
 
 		else if (userInput.numberOfNode)
@@ -351,6 +361,7 @@ void UIMonitor_main(void)
 				tdi.requestVideo = true;
 				userInput.numberOfNode = -1;
 				todoFIFO.push(tdi);
+				USED = true;
 			}
 		}
 
