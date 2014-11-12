@@ -739,7 +739,7 @@ int xbeeNeighbors::neighborCount()
 	return _neighbors.size();
 }
 
-int numberOfNeighbor(const address64 &adr)
+int xbeeNeighbors::numberOfNeighbor(const address64 &adr)
 {
 	if (_neighbors.empty()) return -1;
 
