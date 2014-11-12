@@ -97,13 +97,13 @@ void control_main(void)
 	while (globalStop == false)
 	{
 
-		if (FIRSTRUN || nmapRefreshTimer.read() >= 20000)
+		if (FIRSTRUN == true || nmapRefreshTimer.read() >= 20000)
 		{
 			if (FIRSTRUN) FIRSTRUN = false;
 			else nmapRefreshTimer.reset();
 			RFPacketRequest rfp;
 			rfp.requestType = task_networkMapUpdate;
-			rfp.addressForRequest = 0x00;
+			rfp.addressForRequest = BCaddr;
 			RFOutgoingFIFOMutex.lock();
 			RFOutgoingFIFO.push(rfp);
 			RFOutgoingFIFOMutex.unlock();

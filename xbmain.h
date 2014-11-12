@@ -114,7 +114,6 @@ class VCR_threaded
 
 			if (!(_POWER))
 			{
-				while (!(START)) {}
 				_POWER = true;
 				_threadSTOP = false;
 				_VCRThread = std::thread(&VCR_threaded::VCRMain, this);
