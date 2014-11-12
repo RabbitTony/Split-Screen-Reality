@@ -491,7 +491,7 @@ void VCR_threaded::VCRMain(void)
 				}
 				close(fd);
 				_PLAY = false;
-				//make a system call to run OMX player.
+				system("omxplayer -f 15 inVideo");
 				lastNumberOfVideoBytesRead = 0;
 			}
 		}
@@ -622,7 +622,7 @@ void recordMain(void)
 		if (recordSegment)
 		{
 			recordSegment = false;
-			system("raspivid -w 320 -h 240 -b 20000 -t 1000 -o outVideo");
+			system("raspivid -w 320 -h 240 -b 20000 -t 1000 -fps 15 -o outVideo");
 		}
 	}
 }
