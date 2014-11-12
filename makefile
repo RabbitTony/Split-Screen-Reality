@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-c -std=c++0x -pthread
+CFLAGS=-c -std=c++0x -pthread -lwiringPi
 LDFLAGS=
 CF=-std=c++0x -pthread
 SOURCES=xbmain.cpp xbeeDMapi.cpp TTYserial.cpp stopwatch.cpp
