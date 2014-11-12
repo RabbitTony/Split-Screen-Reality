@@ -59,6 +59,13 @@ void TTYMonitor_main(void); //Controls sending the bytes to the xbee over UART.
 void RFMonitor_main(void); //Monitors the global flags and RFOutGoingFIFO while updating RFIncomingFIFO;
 void UIMonitor_main(void); //Thread to look for user input. 
 void control_main(void); //Thread to maintain overall control of the program and process all the buffers.
+void recordMain(void); //A small helpe thread that records a 1 second segment of video. 
+
+//The interrupt service routines. 
+void node1ISR(void);
+void node2ISR(void);
+void node3ISR(void);
+void stopISR(void);
 
 // Classes
 class VCR_threaded 

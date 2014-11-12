@@ -18,7 +18,19 @@
 #include <strings.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
+#include <wiringPi.h>
 
+// Structures
+struct ISRflags
+{
+	//As these are acted on by buttons, these are LOCAL requests. 
+	volatile int numberOfNode;
+	volatile bool stop;
+};
+
+ISRflags userInput;
 
 // Global variables
 std::string modem = "/dev/ACM0";
@@ -26,6 +38,7 @@ globalFlags gf;
 bool TTYFailure = false;
 bool globalStop = false;
 bool START = false;
+bool recordSegment = false; 
 
 int main(int argc, char* argv[])
 {
@@ -34,6 +47,15 @@ int main(int argc, char* argv[])
 	//Start threads
 
 	//Clean up and exit
+	
+	//First setup the user input and begin monitoring the GPIO resources
+	userInput.numberOfNode = -1;
+	userInput.stop = false;
+	wiringPiSetup();
+	wiringPiISR(buttonForNode1, INT_EDGE_FALLING, &node1ISR);
+	wiringPiISR(buttonForNode2, INT_EDGE_FALLING, &node2ISR);
+	wiringPiISR(buttonForNode3, INT_EDGE_FALLING, &node3ISR);
+	wiringPiISR(buttonForStop, INT_EDGE_FALLING, &stopISR);
 
 	if (argc == 2) modem = argv[1];
 	
@@ -42,6 +64,7 @@ int main(int argc, char* argv[])
 	
 	std::thread tty_t(TTYMonitor_main);
 	std::thread controlMain_t(control_main);
+	std::thread UIMon_t(UIMonitor_main);
 
 	START = true;
 
@@ -278,7 +301,37 @@ void RFMonitor_main(void)
 void UIMonitor_main(void)
 {
 	//Start running. 
+	while(START == false) {}
+	while(globalStop == false)
+	{
+		globalFlags tdi;
+		tdi.stopVideo = false;
+		tdi.sendVideo = false;
+		tdi.addressForVideoRequestingNode = 0x00;
+		tdi.addressToRequestVideoFrom = 0x00;
+		tdi.displayVideo = false;
+		tdi.requestVideo = false;
 
+		if (userInput.stop == true)
+		{
+			userInput.stop = false;
+			tdi.stopVideo = true;
+			todoFIFO.push(tdi);
+		}
+
+		else if (userInput.numberOfNode)
+		{
+			if (userInput.numberOfNode <= (networkMap.neighborCount() -1))
+			{
+				tdi.addressToRequestVideoFrom = networkMap[userInput.numberOfNode];
+				tdi.requestVideo = true;
+				userInput.numberOfNode = -1;
+				todoFIFO.push(tdi);
+			}
+		}
+
+		
+	}
 	return;
 }
 
@@ -298,25 +351,25 @@ bool VCR_threaded::play(const RFPacketRequest& invid)
 
 	if (n <= 5) return false;
 
-	if (_STOP == false) // If the stop button has been pressed.
+	if (_STOP == false) // If the stop button has not been pressed.
 	{
 		if (n > 5)
 		{
 			_PLAY = true;
 			gf.displayVideo = true;
 		}
-		if (n == 72) // This is a full video packet and checking for trailing bytes isn't required.
+		if (n > 7) // This is a full video packet and checking for trailing bytes isn't required.
 		{
 			_m.lock();
 			_cassetteTape.push(invid.payload); //Actually writing to file and playing happens in VCRMain
 			_m.unlock();
 			return true;
 		}
-		if (n > 5 && n < 72)
+		if (n <= 7)
 		{
 			int lastbyte = n - 1;
 			bool DONE = false;
-			while(lastbyte > 4 && DONE == false) //Check to see how many bytes are actually present.
+			while(lastbyte >5 && DONE == false) //Check to see how many bytes are actually present.
 			{
 				DONE = true;
 				if (invid.payload[lastbyte] == 0x11)
@@ -406,7 +459,7 @@ void VCR_threaded::VCRMain(void)
 			//Make a system call to raspivid.
 			//Read from the fifo.
 
-			//system call goes here......
+			recordSegment = true;
 
 			int fd = open(infile.c_str(), O_RDONLY);
 			if (fd <= 0)
@@ -443,7 +496,7 @@ void VCR_threaded::VCRMain(void)
 				if (v.size() <= 5)
 				{
 					uint8_t lastbyte = 0x13;
-					while (v.size() <= 5)
+					while (v.size() <= 7)
 					{
 						if (lastbyte == 0x13)
 						{
@@ -471,7 +524,6 @@ void VCR_threaded::VCRMain(void)
 				{
 					GO = false;
 					_RECORD = false;
-					toAddress = 0x00;
 				}
 
 			}
@@ -498,3 +550,38 @@ char VCR_threaded::stop(void)
 	return 0;
 }
 
+void node1ISR(void)
+{
+	userInput.stop = false;
+	userInput.numberOfNode = 0;
+}
+
+void node2ISR(void)
+{
+	userInput.stop = false;
+	userInput.numberOfNode = 1;
+}
+
+void node3ISR(void)
+{
+	userInput.stop = false;
+	userInput.numberOfNode = 2;
+}
+
+void stopISR(void)
+{
+	userInput.stop = true;
+	userInput.numberOfNode = -1;
+}
+
+void recordMain(void)
+{
+	while (globalStop == false)
+	{
+		if (recordSegment)
+		{
+			recordSegment = false;
+			system("raspivid -w 320 -h 240 -b 20000 -t 1000 -o outVideo");
+		}
+	}
+}
