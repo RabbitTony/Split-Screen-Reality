@@ -83,6 +83,7 @@ class VCR_threaded
 	public:
 		VCR_threaded() : _VCRThread()
 		{
+			std::cout << "Default constructor of VCR.\n";
 			_STOP = _RECORD = _PLAY = _threadSTOP = _POWER = false;
 			_RFOutgoingFIFO = &RFOutgoingFIFO;
 			lastNumberOfVideoBytesRead = 0;
@@ -111,7 +112,7 @@ class VCR_threaded
 		const address64& getToAddress(void) { return toAddress; }
 		void power(void)
 		{	
-
+			std::cout << "Powering up VCR.\n";
 			if (!(_POWER))
 			{
 				_POWER = true;

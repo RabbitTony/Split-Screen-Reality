@@ -763,6 +763,12 @@ int xbeeNeighbors::numberOfNeighbor(const address64 &adr)
 
 address64& xbeeNeighbors::operator[](const int index)
 {
+	
+	if (_neighbors.size() <= 0)
+	{
+		address64 ra;
+		ra = 0x00;
+	}
 	if (index < 0) return _neighbors[0];
 	if (index >= _neighbors.size()) return _neighbors[_neighbors.size()-1];
 

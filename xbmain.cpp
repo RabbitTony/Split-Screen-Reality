@@ -33,7 +33,7 @@ struct ISRflags
 ISRflags userInput;
 
 // Global variables
-std::string modem = "/dev/ACM0";
+std::string modem = "/dev/ttyUSB0";
 globalFlags gf;
 bool TTYFailure = false;
 bool globalStop = false;
@@ -63,22 +63,36 @@ int main(int argc, char* argv[])
 	gf.sendVideo = gf.displayVideo = gf.requestVideo = false;
 	gf.addressForVideoRequestingNode = gf.addressToRequestVideoFrom = 0x00;
 	
+	std::cout << "Starting up threads.\n";
 	std::thread tty_t(TTYMonitor_main);
+	std::cout << "TTY started." << std::endl;
 	std::thread controlMain_t(control_main);
+	std::cout << "Control Main started.\n";
 	std::thread UIMon_t(UIMonitor_main);
+	std::cout << "UI Monitor started.\n";
 	std::thread RFMon_t(RFMonitor_main);
+	std::cout << "RF Monitor started.\n";
 
 	START = true;
+	std::cout << "Start set as true.\n";
 
 	if (TTYFailure) 
 	{
 		globalStop = true;
 		std::cout << "Error opening serial port.\n";
+		tty_t.join();
+		controlMain_t.join();
+		UIMon_t.join();
+		RFMon_t.join();
 		return -1;
 	}
 
-	while(globalStop = false) {}
+	while(globalStop == false) {}
 
+	tty_t.join();
+	controlMain_t.join();
+	UIMon_t.join();
+	RFMon_t.join();
 
 	return 0;
 }
@@ -92,14 +106,19 @@ void control_main(void)
 	// todoFIFO => information from the UI.
 	// The UI thread will put information into the todoFIFO.
 
+	std::cout << "Entering control_main(void)\n";
+
 	while(!(START)) {}
+	std::cout << "Instantiating VCR.\n";
 	VCR_threaded vcr;
+	std::cout << "Turning on VCR Power.\n";
 	vcr.power();
 	bool FIRSTRUN = true;
 	stopwatch nmapRefreshTimer;
 
 	while (globalStop == false)
 	{
+		std::cout << "Entering control main's infinite loop.\n";
 
 		if (FIRSTRUN == true || nmapRefreshTimer.read() >= 20000)
 		{
@@ -336,7 +355,7 @@ void UIMonitor_main(void)
 {
 	//Start running. 
 	while(START == false) {}
-
+	std::cout << "Starting UIMonitor\n";
 	bool USED = false;
 	bool FIRSTRUN =true;
 	globalFlags tdi;
@@ -357,6 +376,7 @@ void UIMonitor_main(void)
 
 		if (userInput.stop == true)
 		{
+			std::cout << "User input stop request.\n";
 			userInput.stop = false;
 			tdi.stopVideo = true;
 			todoFIFO.push(tdi);
@@ -365,7 +385,9 @@ void UIMonitor_main(void)
 
 		else if (userInput.numberOfNode)
 		{
-			if (userInput.numberOfNode <= (networkMap.neighborCount() -1))
+			std::cout << "Userinput for node selection.\n";
+			std::cout << "Node Number is: " << userInput.numberOfNode << std::endl;
+			if (userInput.numberOfNode <= (networkMap.neighborCount() -1) && userInput.numberOfNode >= 0)
 			{
 				tdi.addressToRequestVideoFrom = networkMap[userInput.numberOfNode];
 				tdi.requestVideo = true;

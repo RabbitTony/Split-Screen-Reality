@@ -1,7 +1,7 @@
 CC=g++
-CFLAGS=-c -std=c++0x -pthread -lwiringPi
+CFLAGS=-c -std=c++0x -pthread -lwiringPi -g
 LDFLAGS=
-CF=-std=c++0x -pthread
+CF=-std=c++0x -pthread -lwiringPi -g
 SOURCES=xbmain.cpp xbeeDMapi.cpp TTYserial.cpp stopwatch.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=xbmain
