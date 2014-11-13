@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
 	//Clean up and exit
 	
 	//First setup the user input and begin monitoring the GPIO resources
+	std::cout << "Starting main()." << std::endl;
 	userInput.numberOfNode = -1;
 	userInput.stop = false;
 	wiringPiSetup();
@@ -65,6 +66,7 @@ int main(int argc, char* argv[])
 	std::thread tty_t(TTYMonitor_main);
 	std::thread controlMain_t(control_main);
 	std::thread UIMon_t(UIMonitor_main);
+	std::thread RFMon_t(RFMonitor_main);
 
 	START = true;
 
@@ -74,6 +76,8 @@ int main(int argc, char* argv[])
 		std::cout << "Error opening serial port.\n";
 		return -1;
 	}
+
+	while(globalStop = false) {}
 
 
 	return 0;
@@ -385,6 +389,7 @@ bool VCR_threaded::play(const RFPacketRequest& invid)
 		return false;
 	}
 
+	std::cout << "VCR_threaded::play() got called.\n";
 	//First check the amount of data. if n < 72 bytes, this is the last packet
 	//for this segment.
 
@@ -452,6 +457,7 @@ bool VCR_threaded::record(const RFPacketRequest& outvid)
 		return false;
 	if (_STOP == false)
 	{
+		std::cout << "Recording video.\n";
 		_RECORD = true;
 		gf.requestVideo = true;
 
