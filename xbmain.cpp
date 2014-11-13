@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
 	}
 
 	while(globalStop == false) {}
-
+	if (TTYFailure) std::cout << "Error opening serial port.\n";
 	tty_t.join();
 	controlMain_t.join();
 	UIMon_t.join();
@@ -115,11 +115,9 @@ void control_main(void)
 	vcr.power();
 	bool FIRSTRUN = true;
 	stopwatch nmapRefreshTimer;
-
+	std::cout << "Entering Control Main's infinite loop.\n";
 	while (globalStop == false)
 	{
-		std::cout << "Entering control main's infinite loop.\n";
-
 		if (FIRSTRUN == true || nmapRefreshTimer.read() >= 20000)
 		{
 			if (FIRSTRUN) FIRSTRUN = false;
@@ -207,7 +205,7 @@ void control_main(void)
 
 
 	}
-	
+	vcr.power();	
 	return;
 }
 
@@ -225,6 +223,7 @@ void TTYMonitor_main(void)
 	if (!(tty.status()))
 	{
 		TTYFailure = true;
+		globalStop = true;
 		return;
 	}
 
@@ -383,7 +382,7 @@ void UIMonitor_main(void)
 			USED = true;
 		}
 
-		else if (userInput.numberOfNode)
+		else if (userInput.numberOfNode >= 0)
 		{
 			std::cout << "Userinput for node selection.\n";
 			std::cout << "Node Number is: " << userInput.numberOfNode << std::endl;
@@ -391,10 +390,11 @@ void UIMonitor_main(void)
 			{
 				tdi.addressToRequestVideoFrom = networkMap[userInput.numberOfNode];
 				tdi.requestVideo = true;
-				userInput.numberOfNode = -1;
 				todoFIFO.push(tdi);
-				USED = true;
 			}
+			USED = true;
+			userInput.numberOfNode = -1;
+
 		}
 
 		
@@ -519,6 +519,7 @@ void VCR_threaded::VCRMain(void)
 				}
 				close(fd);
 				_PLAY = false;
+				std::cout << "Playing video.\n";
 				system("omxplayer -f 15 inVideo");
 				lastNumberOfVideoBytesRead = 0;
 			}
