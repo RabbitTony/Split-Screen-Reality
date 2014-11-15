@@ -190,7 +190,7 @@ void masterMain(std::string m)
 							{
 								if (pkt.data[0] & (1<<SSRPT_videoPacket))
 								{
-									std::cout << "Received a video packet from current neighbor.\n";
+									//std::cout << "Received a video packet from current neighbor.\n";
 									videoTimeout.reset();
 									pkt.data.erase(pkt.data.begin());
 									videoBuffer.push(pkt.data);
@@ -233,17 +233,19 @@ void masterMain(std::string m)
 								write(fd, &byte,1);
 							}
 						}
+
+						close(fd);
+
+						system("omxplayer -f 15 inVideo");
 					}
 
-					close(fd);
-
-					system("omxplayer -f 15 inVideo");
+					
 				}
 
 				neighborIndex++;
 				if (neighborIndex >= NMAP.neighborCount) neighborIndex = 0;
 
-				if (NMAP_stopwatch.read() >= (30*1000) && NMAP.neighborCount() > 0)
+				if (NMAP_stopwatch.read() >= (120*1000) && NMAP.neighborCount() > 0)
 				{
 					NMAP.clear();	
 					std::cout << "Network Map reset after timeout.\n";
