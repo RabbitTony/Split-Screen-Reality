@@ -1,247 +1,93 @@
 #include <iostream>
-#include <stdlib.h>
-#include <stdio.h>
-#include <ctime>
-#include <mutex>
-#include <thread>
-#include <vector>
-#include <queue>
-#include <iterator>
-#include <cstdint>
-#include <unistd.h>
-#include <time.h>
 #include "xbeeDMapi.h"
 #include "TTYserial.h"
 #include "xbmain.h"
 #include "stopwatch.h"
-#include <fcntl.h>
-#include <strings.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <string.h>
-#include <wiringPi.h>
+#include <mutex>
+#include <thread>
+#include <vector>
+#include <iterator>
+#include <string>
+#include <cstdint>
+#include <unistd.h>
+#include <stdio.h>
+#include <time.h>
+#include <queue>
+#include <cstdint>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
 
-// Structures
-struct ISRflags
-{
-	//As these are acted on by buttons, these are LOCAL requests. 
-	volatile int numberOfNode;
-	volatile bool stop;
-};
-
-ISRflags userInput;
-
-// Global variables
-std::string modem = "/dev/ttyUSB0";
-globalFlags gf;
-bool TTYFailure = false;
-bool globalStop = false;
-bool START = false;
-bool recordSegment = false; 
 
 int main(int argc, char* argv[])
 {
-	//Process command-line arguments
+	bool SLAVEMODE = false;
+	if (argc > 1) // Handle proram arguments. 
+	{
+		for (int i = 1; i < argc; i++)
+		{
+			if (argv[i][0] == '-')
+			{
+				if (argv[i][1] == 's') SLAVEMODE = true;
+				if (argv[i][1] == 'm') SLAVEMODE = false;
+				if (argv[i][1] == 'h')
+				{
+					std::cout << "Useage: " << argv[0] << " -[smh] [modem]\n";
+					std::cout << "NOTE: program defaults to master mode with a modem at\n";
+					std::cout << modem << std::endl;
+					std::cout << "Further, device speed is locked at 57600 baud.\n";
+				}
+			}
+			else modem = argv[i];
+		}
+	}
 
-	//Start threads
-
-	//Clean up and exit
-	
-	//First setup the user input and begin monitoring the GPIO resources
-	std::cout << "Starting main()." << std::endl;
-	userInput.numberOfNode = -1;
-	userInput.stop = false;
-	wiringPiSetup();
-	wiringPiISR(buttonForNode1, INT_EDGE_FALLING, &node1ISR);
-	wiringPiISR(buttonForNode2, INT_EDGE_FALLING, &node2ISR);
-	wiringPiISR(buttonForNode3, INT_EDGE_FALLING, &node3ISR);
-	wiringPiISR(buttonForStop, INT_EDGE_FALLING, &stopISR);
-
-	if (argc == 2) modem = argv[1];
-	
-	gf.sendVideo = gf.displayVideo = gf.requestVideo = false;
-	gf.addressForVideoRequestingNode = gf.addressToRequestVideoFrom = 0x00;
-	
-	std::cout << "Starting up threads.\n";
-	std::thread tty_t(TTYMonitor_main);
-	std::cout << "TTY started." << std::endl;
-	std::thread controlMain_t(control_main);
-	std::cout << "Control Main started.\n";
-	std::thread UIMon_t(UIMonitor_main);
-	std::cout << "UI Monitor started.\n";
-	std::thread RFMon_t(RFMonitor_main);
-	std::cout << "RF Monitor started.\n";
-
+	std::string port(TTYMonitor_main);
 	START = true;
-	std::cout << "Start set as true.\n";
 
-	if (TTYFailure) 
+	while (TTYStarted == false) {}
+
+	if (TTYStartFailed) 
 	{
-		globalStop = true;
-		std::cout << "Error opening serial port.\n";
-		tty_t.join();
-		controlMain_t.join();
-		UIMon_t.join();
-		RFMon_t.join();
-		return -1;
+		std::cout << "TTY failure, modem was " << modem << std::endl;
+		if (port.joinable()) port.join();
+		return 0;
 	}
 
-	while(globalStop == false) {}
-	if (TTYFailure) std::cout << "Error opening serial port.\n";
-	tty_t.join();
-	controlMain_t.join();
-	UIMon_t.join();
-	RFMon_t.join();
+	if (SLAVEMODE) slaveMain(modem);
+	else masterMain(modem);
 
+	if (port.joinable()) port.join();
+
+	std::cout << "All threads ended nicely.\n";
 	return 0;
-}
-
-void control_main(void)
-{
-	//Setup the VCR. 
-
-	//Check the stuff and monitor the RF fifos.
-	// RFFifos => RF information and packets
-	// todoFIFO => information from the UI.
-	// The UI thread will put information into the todoFIFO.
-
-	std::cout << "Entering control_main(void)\n";
-
-	while(!(START)) {}
-	std::cout << "Instantiating VCR.\n";
-	VCR_threaded vcr;
-	std::cout << "Turning on VCR Power.\n";
-	vcr.power();
-	bool FIRSTRUN = true;
-	stopwatch nmapRefreshTimer;
-	std::cout << "Entering Control Main's infinite loop.\n";
-	while (globalStop == false)
-	{
-		if (FIRSTRUN == true || nmapRefreshTimer.read() >= 20000)
-		{
-			if (FIRSTRUN) FIRSTRUN = false;
-			else nmapRefreshTimer.reset();
-			RFPacketRequest rfp;
-			rfp.requestType = task_networkMapUpdate;
-			rfp.addressForRequest = BCadr;
-			RFOutgoingFIFOMutex.lock();
-			RFOutgoingFIFO.push(rfp);
-			RFOutgoingFIFOMutex.unlock();
-		}
-
-		if (incomingVideo.size())
-		{
-			RFPacketRequest rfp;
-			incomingVideoMutex.lock();
-			rfp.payload = incomingVideo.front();
-			incomingVideo.pop();
-			incomingVideoMutex.unlock();
-			rfp.requestType = task_videoIn;
-			vcr.play(rfp);
-		}
-
-		if (RFIncomingFIFO.size()) //These are remote requests / commands.
-		{
-			RFPacketRequest ipr;
-			RFIncomingFIFOMutex.lock();
-			ipr = RFIncomingFIFO.front();
-			RFIncomingFIFO.pop();
-			RFIncomingFIFOMutex.unlock();
-			
-			if (ipr.requestType == task_stop) //Remote stop request.
-			{
-				vcr.stop();
-			}
-
-			else if (ipr.requestType == task_requestVideo)
-			{
-				vcr.record(ipr);
-			}
-		}
-
-
-
-
-		if (todoFIFO.size()) //These are commands from the LOCAL node.
-		{
-			globalFlags cr;
-			todoFIFO.pop();
-
-			if (cr.requestVideo)
-			{
-				RFPacketRequest rfp;
-
-				rfp.addressForRequest = cr.addressToRequestVideoFrom;
-				rfp.requestType = task_videoOut;
-				RFOutgoingFIFOMutex.lock();
-				RFOutgoingFIFO.push(rfp);
-				RFOutgoingFIFOMutex.unlock();
-			}
-
-			else if (cr.stopVideo) //This is a stop request from the LOCAL node.
-			{
-				gf.stopVideo = true;
-				RFPacketRequest rfp;
-				rfp.addressForRequest = vcr.getToAddress();
-				rfp.requestType = task_stop;
-				std::vector<uint8_t> v;
-				v.push_back(task_stop);
-				v.push_back(0x02);
-				v.push_back(0x03);
-				v.push_back(0x05);
-				v.push_back(0x07);
-				rfp.payload = v;
-				RFOutgoingFIFOMutex.lock();
-				RFOutgoingFIFO.push(rfp);
-				RFOutgoingFIFOMutex.unlock();
-				vcr.stop();				
-			}
-		}
-
-
-
-
-
-
-	}
-	vcr.power();	
-	return;
 }
 
 void TTYMonitor_main(void)
 {
-	//Startup the serial. 
-
-	//Check for failure.
-
-	//Infinite loop.
-
 	TTYserial tty;
-
-	tty.begin(modem, 57600);
+	tty.begin(modem, baud);
+	
 	if (!(tty.status()))
 	{
-		TTYFailure = true;
-		globalStop = true;
+		std::cout << "*******************ERROR OPENING SERIAL PORT*******************\n";
+		TTYStarted = true;
+		TTYStartFailed = true;
 		return;
 	}
 
-	while (!(START))
-	{
-		if (globalStop) return;
-	}
+	while (!(START)) {}
 
-	while (!(globalStop))
+	while (!(STOP))
 	{
-		if (tty.available() && globalStop == false)
+		if (tty.available() && STOP == false)
 		{
 			inBytesMutex.lock();
 			inBytes.push_back(tty.readbyte());
 			inBytesMutex.unlock();
 		}
 
-		if (outBytes.size() && globalStop == false)
+		if (outBytes.size() && STOP == false)
 		{
 			outBytesMutex.lock();
 			tty.sendbyte(outBytes.front());
@@ -251,407 +97,201 @@ void TTYMonitor_main(void)
 		}
 	}
 
-	
 	return;
 }
 
-void RFMonitor_main(void)
+void slaveMain(std::string m)
 {
-	//Start running. 
-	
+
+	//stuff
+	return;
+}
+
+void masterMain(std::string m)
+{
 	xbeeDMapi xb;
-	rcvdPacket inpkt;
+	stopwatch ATNDResend;
 
-	while (!(START)) {}
+	std::cout << "Starting master main." << std::endl;
+	NMAP_stopwatch.reset();
 
-	while (globalStop == false)
+	while (!(STOP))
 	{
-		if(xb.pktAvailable())
+		ATNDResend.reset();
+		xb.ATND();
+		xb.sendPkt();
+
+		while (videoBuffer.size()) videoBuffer.pop();
+
+		bool GOTNEIGHBOR = false;
+		while(GOTNEIGHBOR == false && ATNDResend.read() < 10*1000)
 		{
-			uint8_t ptype = xb.rcvPkt(inpkt);
-			if (ptype == APIid_RP)
+			if (xb.pktAvailable())
 			{
-				if (inpkt.length > 5) // Packet of video.
+				rcvdPacket pkt;
+				xbeeDMapi::zeroPktStruct(pkt);
+				xb.rcvPkt(pkt);
+
+				if (pkt.pType == APIid_ATCR)
 				{
-					incomingVideoMutex.lock();
-					incomingVideo.push(inpkt.data);
-					incomingVideoMutex.unlock();
-				}
-
-				else if (inpkt.length == 5 && inpkt.data[1] == 0x02 && inpkt.data[2] == 0x03
-						&& inpkt.data[3] == 0x05 && inpkt.data[4] == 0x07) // This is a command packet
-				{ //This is handled in control main. 
-					RFPacketRequest ipr;
-					ipr.requestType = inpkt.data.front();
-					ipr.addressForRequest = inpkt.from;
-					RFIncomingFIFOMutex.lock();
-					RFIncomingFIFO.push(ipr);
-					RFIncomingFIFOMutex.unlock();
-				}
-			}
-			
-			else if (ptype == APIid_ATCR && inpkt.ATCmd[0] == 'N' && inpkt.ATCmd[1] == 'D')
-			{
-				networkMap.update(inpkt.from);
-			}
-		}
-
-		if(RFOutgoingFIFO.size()) //We have a request that needs to go out. 
-		{
-			RFOutgoingFIFOMutex.lock();
-			RFPacketRequest opr = RFOutgoingFIFO.front();
-			RFOutgoingFIFO.pop();
-			RFOutgoingFIFOMutex.unlock();
-
-			//Now we need to figure out what it is.
-			//The requests are going to be actually setup by the control_main thread.
-			//This is because the UI information is going to be processed there and the
-			//decision to request video from a particular node will be arranged there. 
-
-
-			if (opr.requestType != task_videoIn && opr.requestType != task_networkMapUpdate)
-			{
-				xb.makeUnicastPkt(opr.addressForRequest);
-				xb.loadUnicastPkt(opr.payload);
-				xb.sendPkt();
-					
-				//check for the acknowledgement. 
-				stopwatch sendTimeOut;
-				bool DONE = false;
-
-				while (sendTimeOut.read() <= 1000 && DONE == false)
-				{
-					if (xb.pktAvailable())
+					if(pkt.ATCmd[0] == 'N' && pkt.ATCmd[1] == 'D')
 					{
-						uint8_t ptype = xb.rcvPkt(inpkt);
-						if (ptype == APIid_TS && inpkt.deliveryStatus == 0x00)
-						{
-							DONE = true;
-							std::cout << "Packet sent successfully to: ";
-							printf("%x:%x:%x:%x:%x:%x:%x:%x\n", opr.addressForRequest[0], opr.addressForRequest[1],
-									opr.addressForRequest[2], opr.addressForRequest[3], opr.addressForRequest[4],
-									opr.addressForRequest[5], opr.addressForRequest[6], opr.addressForRequest[7]);
-						}
-
-						// Add code for repeating transmission. 
+						NMAP.update(pkt.from);
+						GOTNEIGHBOR = true;
 					}
 				}
 			}
+		}
 
-			if (opr.requestType == task_networkMapUpdate)
+		if (GOTNEIGHBOR)
+		{
+			if (neighborIndex < NMAP.neighborCount() && NMAP.neighborCount > 0)
 			{
-				xb.ATNDPkt();
-				xb.sendPkt();
-			}
+				currentNeighbor = NMAP[neighborIndex];
 
-						
-		}
-	}
-	return;
-}
+				SSRPacketCreator outgoingPacket(SSRPT_videoRequest);
 
-void UIMonitor_main(void)
-{
-	//Start running. 
-	while(START == false) {}
-	std::cout << "Starting UIMonitor\n";
-	bool USED = false;
-	bool FIRSTRUN =true;
-	globalFlags tdi;
+				xb.makeUnicastPkt(currentNeighbor);
+				xb.loadUnicastPkt(outgoingPacket.get());
+				xb.sendPkt;
 
-	while(globalStop == false)
-	{
-		if (USED == true || FIRSTRUN == true)
-		{
-			FIRSTRUN = false;
-			USED = false;
-			tdi.stopVideo = false;
-			tdi.sendVideo = false;
-			tdi.addressForVideoRequestingNode = 0x00;
-			tdi.addressToRequestVideoFrom = 0x00;
-			tdi.displayVideo = false;
-			tdi.requestVideo = false;
-		}
+				stopwatch videoTimeout;
 
-		if (userInput.stop == true)
-		{
-			std::cout << "User input stop request.\n";
-			userInput.stop = false;
-			tdi.stopVideo = true;
-			todoFIFO.push(tdi);
-			USED = true;
-		}
+				bool KEEPWAITING = true;
+				bool FULLSEGMENT = false;
 
-		else if (userInput.numberOfNode >= 0)
-		{
-			std::cout << "Userinput for node selection.\n";
-			std::cout << "Node Number is: " << userInput.numberOfNode << std::endl;
-			if (userInput.numberOfNode <= (networkMap.neighborCount() -1) && userInput.numberOfNode >= 0)
-			{
-				tdi.addressToRequestVideoFrom = networkMap[userInput.numberOfNode];
-				tdi.requestVideo = true;
-				todoFIFO.push(tdi);
-			}
-			USED = true;
-			userInput.numberOfNode = -1;
-
-		}
-
-		
-	}
-	return;
-}
-
-bool VCR_threaded::play(const RFPacketRequest& invid)
-{
-	//If recording, fail
-	//Set playing and store current request. 
-	if (_RECORD == true || _threadSTOP == true || _POWER == false)
-	{
-		return false;
-	}
-
-	std::cout << "VCR_threaded::play() got called.\n";
-	//First check the amount of data. if n < 72 bytes, this is the last packet
-	//for this segment.
-
-	int n = invid.payload.size();
-
-	if (n <= 5) return false;
-
-	if (_STOP == false) // If the stop button has not been pressed.
-	{
-		if (n > 5)
-		{
-			_PLAY = true;
-			gf.displayVideo = true;
-		}
-		if (n > 7) // This is a full video packet and checking for trailing bytes isn't required.
-		{
-			_m.lock();
-			_cassetteTape.push(invid.payload); //Actually writing to file and playing happens in VCRMain
-			_m.unlock();
-			return true;
-		}
-		if (n <= 7)
-		{
-			int lastbyte = n - 1;
-			bool DONE = false;
-			while(lastbyte >5 && DONE == false) //Check to see how many bytes are actually present.
-			{
-				DONE = true;
-				if (invid.payload[lastbyte] == 0x11)
+				while(KEEPWAITING)
 				{
-					if (invid.payload[lastbyte - 1] == 0x13) DONE = false;
-				}
-				if (invid.payload[lastbyte] == 0x13)
-				{
-					if (invid.payload[lastbyte - 1] == 0x11) DONE = false;
-				}
-
-				if (DONE == false) lastbyte--;
-			}
-
-			//Now check for possible fail conditions (unlikely but who knows)
-			if (DONE == false)
-			{
-				_PLAY = false;
-				return false;
-			}
-
-			std::vector<uint8_t> tempinvid;
-			for (int i = 0; i < lastbyte; i++) //lastbyte technically is 1 after the last byte.
-				tempinvid.push_back(invid.payload[i]);
-			_m.lock();
-			_cassetteTape.push(tempinvid);
-			_m.unlock();
-			return true;
-		}
-	}
-	return false;
-}
-
-bool VCR_threaded::record(const RFPacketRequest& outvid)
-{
-	//If playing, fail
-	//Set recording and store current request. 
-	if (_PLAY == true || _threadSTOP == true || _POWER == false)
-		return false;
-	if (_STOP == false)
-	{
-		std::cout << "Recording video.\n";
-		_RECORD = true;
-		gf.requestVideo = true;
-
-		if (toAddress == outvid.addressForRequest) return true;
-		else if (toAddress == 0x00)
-		{
-			toAddress = outvid.addressForRequest;
-			return true;
-		}
-	}
-	return false;
-}
-
-void VCR_threaded::VCRMain(void)
-{
-	
-	//Looping
-	//if playing and full video received, play the segment
-	//if recording keep sending video until segment is over
-	while (globalStop == false && _POWER == true)
-	{
-		if (_PLAY == true)
-		{
-			if (lastNumberOfVideoBytesRead < 72)
-			{
-				int fd = open(infile.c_str(), O_WRONLY | O_CREAT);
-				std::vector<uint8_t>::iterator it;
-				while(!(_cassetteTape.empty()))
-				{
-					char byte = 0;
-					for (it = _cassetteTape.front().begin(); it != _cassetteTape.front().end(); it++)
+					if (videoTimeout.read() >= 10*1000) 
 					{
-						byte = *it;
-						write(fd, &byte,1);
-					}
-					_cassetteTape.pop();
-				}
-				close(fd);
-				_PLAY = false;
-				std::cout << "Playing video.\n";
-				system("omxplayer -f 15 inVideo");
-				lastNumberOfVideoBytesRead = 0;
-			}
-		}
-		if (_RECORD == true && toAddress != 0x00)
-		{
-			//Make a system call to raspivid.
-			//Read from the fifo.
-
-			recordSegment = true;
-
-			int fd = open(infile.c_str(), O_RDONLY);
-			if (fd <= 0)
-			{
-				std::cout << "Error opening FIFO.\n";
-				return;
-			}
-
-			bool GO = true;
-
-			while(GO)
-			{
-				std::vector<uint8_t> v;
-				bool GOGO = true;
-				while(v.size() < 72 && GOGO == true);
-				{
-					uint8_t b = 0;
-					int n = read(fd, &b, 1);
-					if (n == 1) v.push_back(b);
-					else GOGO = false;
-				}
-
-				if (v.size() > 5 && v.size() <= 72)
-				{
-					RFPacketRequest rfp;
-					rfp.requestType = task_videoOut;
-					rfp.addressForRequest = toAddress;
-					rfp.payload = v;
-					RFOutgoingFIFOMutex.lock();
-					_RFOutgoingFIFO->push(rfp);
-					RFOutgoingFIFOMutex.unlock();
-				}
-
-				if (v.size() <= 5)
-				{
-					uint8_t lastbyte = 0x13;
-					while (v.size() <= 7)
-					{
-						if (lastbyte == 0x13)
-						{
-							v.push_back(0x11);
-							lastbyte = 0x11;
-						}
-
-						else if (lastbyte == 0x11)
-						{
-							v.push_back(0x13);
-							lastbyte = 0x13;
-						}
-
+						KEEPWAITING = false;
+						while (videoBuffer.size()) videoBuffer.pop();
 					}
 
-					RFPacketRequest rfp;
-					rfp.requestType = task_videoOut;
-					rfp.addressForRequest = toAddress;
-					rfp.payload = v;
-					_RFOutgoingFIFO->push(rfp);
+					else
+					{
+						if (xb.pktAvailable())
+						{
+							rcvdPacket pkt;
+							xbeeDMapi::zeroPktStruct(pkt);
+							xb.rcvPkt(pkt);
+
+							if (pkt.pType == APIid_ATCR)
+							{
+								std::cout << "Received ATCR message packet: ";
+								if (pkt.ATCmd[0] == 'N' && pkt.ATCmd[1] == 'D') 
+								{
+									NMAP.update(pkt.from);
+									std::cout << "hello message.\n";
+								}
+							}
+
+							else if (pkt.pType == APIid_RP && pkt.from == currentNeighbor)
+							{
+								if (pkt.data[0] & (1<<SSRPT_videoPacket))
+								{
+									std::cout << "Received a video packet from current neighbor.\n";
+									videoTimeout.reset();
+									pkt.data.erase(pkt.data.begin());
+									videoBuffer.push(pkt.data);
+									if (pkt.data.size() < 71)
+									{
+										KEEPWAITING = false;
+										FULLSEGMENT = true;
+									}
+								}
+							}
+
+							else
+							{
+								std::cout << "Received other packet, ignoring.\n";
+							}
+						}
+					}
 
 				}
 
-				if (v.size() < 72)
+				if (FULLSEGMENT)
 				{
-					GO = false;
-					_RECORD = false;
+					int fd = open("inVideo", O_WRONLY | O_CREAT);
+					if (fd <= 0) 
+					{
+						std::cout << "Video received but found file opening failure.\n";
+						while(videoBuffer.size()) videoBuffer.pop();
+					}
+
+					else
+					{
+						while (videoBuffer.size())
+						{
+							std::vector<uint8_t> v = videoBuffer.front();
+							videoBuffer.pop();
+							uint8_t byte = 0x00;
+							for (std::vector<uint8_t>::iterator it = v.begin(); it != v.end(); it++)
+							{
+								byte = v.front();
+								write(fd, &byte,1);
+							}
+						}
+					}
+
+					close(fd);
+
+					system("omxplayer -f 15 inVideo");
 				}
 
+				neighborIndex++;
+				if (neighborIndex >= NMAP.neighborCount) neighborIndex = 0;
+
+				if (NMAP_stopwatch.read() >= (30*1000) && NMAP.neighborCount() > 0)
+				{
+					NMAP.clear();	
+					std::cout << "Network Map reset after timeout.\n";
+				} 
+			}
+
+			else 
+			{
+				neighborIndex = 0;
+				std::cout << "neighborIndex was reset to zero. \n";
 			}
 		}
 	}
-
-	return;
 }
 
-char VCR_threaded::stop(void)
+bool SSRPacketCreator::create(uint8_t type)
 {
-	//stop recording or playing.
-	_m.lock();
-	_PLAY = false;
-	_RECORD = false;
-	_STOP = true;
-	lastNumberOfVideoBytesRead = 0;
-	toAddress = 0x00;
-	while(!(_cassetteTape.empty())) _cassetteTape.pop();
-	_m.unlock();
-	gf.displayVideo = gf.requestVideo = false;
-	gf.sendVideo = false;
-
-	return 0;
+	if (type < 1 || type > 5) return false;
+	clear();
+	_type |= (1<<type);
+	return true;
 }
 
-void node1ISR(void)
+bool SSRPacketCreator::load(std::vector<uint8_t> p)
 {
-	userInput.stop = false;
-	userInput.numberOfNode = 0;
+	if (p.size() == 0 || p.size() > 71) return false;
+
+	_p = p;
+	return true;
 }
 
-void node2ISR(void)
+bool SSRPacketCreator::check(void)
 {
-	userInput.stop = false;
-	userInput.numberOfNode = 1;
+	if (_p.size < 72) return true;
+	else return false;
 }
 
-void node3ISR(void)
+std::vector<uint8_t> SSRPacketCreator::get(void)
 {
-	userInput.stop = false;
-	userInput.numberOfNode = 2;
-}
-
-void stopISR(void)
-{
-	userInput.stop = true;
-	userInput.numberOfNode = -1;
-}
-
-void recordMain(void)
-{
-	while (globalStop == false)
+	std::vector<uint8_t> tv;
+	tv.push_back(_type);
+	if(_p.size() > 0)
 	{
-		if (recordSegment)
+		for(std::vector<uint8_t>::iterator it = _p.begin(); it != _p.end(); it++)
 		{
-			recordSegment = false;
-			system("raspivid -w 320 -h 240 -b 20000 -t 1000 -fps 15 -o outVideo");
+			tv.push_back(*it);
 		}
 	}
+
+	return tv;
 }
