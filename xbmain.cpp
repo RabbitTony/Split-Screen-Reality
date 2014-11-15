@@ -103,7 +103,47 @@ void TTYMonitor_main(void)
 void slaveMain(std::string m)
 {
 
-	//stuff
+	xbeeDMapi xb;
+
+	while (!(STOP))
+	{
+		if (xb.pktAvailable())
+		{
+			rcvdPacket rp;
+			xb.rcvPkt(rp);
+			if (rp.pType == APIid_ATRP)
+			{
+				if (rp.data[0] & (1<<SSRPT_videoRequest)
+				{
+					std::cout << "Received video request. Starting to buffer.\n";
+					system("raspivid -w 320 -h 240 -fps 15 -t 1000 -b 20000 -o outVideo");
+					int fd = open("outVideo", O_RDONLY);
+					bool GO = true;
+					while (GO)
+					{
+						uint8_t byte;
+						std::vector<uint8_t> v;
+						int n = read(fd, &byte, 1);
+						if (n == 1 && v.size < 71) v.push_back(byte);
+						if (n == 0 || v.size() == 70)
+						{
+							SSRPacketCreator outgoingPacket(SSRPT_videoPacket);
+							outgoingPacket.load(v);
+							xb.makeUnicastPkt(rp.from);
+							xb.loadUnicastPkt(outgoingPacket.get());
+							xb.sendPkt();
+						}
+
+						if (n == 0) 
+						{
+							GO = false;
+							close(fd);
+						}
+					}
+				}
+			}
+		}
+	}
 	return;
 }
 
@@ -153,7 +193,7 @@ void masterMain(std::string m)
 
 				xb.makeUnicastPkt(currentNeighbor);
 				xb.loadUnicastPkt(outgoingPacket.get());
-				xb.sendPkt;
+				xb.sendPkt();
 
 				stopwatch videoTimeout;
 
@@ -271,7 +311,7 @@ bool SSRPacketCreator::create(uint8_t type)
 
 bool SSRPacketCreator::load(std::vector<uint8_t> p)
 {
-	if (p.size() == 0 || p.size() > 71) return false;
+	if (p.size() <= 0 || p.size() > 70) return false;
 
 	_p = p;
 	return true;
@@ -279,7 +319,7 @@ bool SSRPacketCreator::load(std::vector<uint8_t> p)
 
 bool SSRPacketCreator::check(void)
 {
-	if (_p.size < 72) return true;
+	if (_p.size < 71) return true;
 	else return false;
 }
 
