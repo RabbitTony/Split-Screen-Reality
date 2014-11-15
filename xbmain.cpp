@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	std::cout << "Starting TTY thread with: " << modem << " / " << baud << std::endl;
 	std::thread port(TTYMonitor_main);
 	START = true;
 
@@ -74,6 +75,12 @@ void TTYMonitor_main(void)
 		TTYStarted = true;
 		TTYStartFailed = true;
 		return;
+	}
+
+	else 
+	{
+		std::cout << "TTY started.\n";
+		TTYStarted = true;
 	}
 
 	while (!(START)) {}
