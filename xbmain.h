@@ -12,7 +12,7 @@
 //Global variables, flags, FIFOs, etc. 
 std::string modem = "/dev/ttyAMA0";
 address64 lastNeighbor, currentNeighbor, nextNeighbor;
-int neighborIndex 0;
+int neighborIndex = 0;
 int baud = 57600;
 xbeeNeighbors NMAP;
 stopwatch NMAP_stopwatch, videoBuffer_stopwatch;
@@ -47,7 +47,7 @@ public:
 
 	bool clear(void) {
 		_type = 0;
-		if (!(_pkt.empty())) _pkt.clear();
+		if (!(_p.empty())) _p.clear();
 	}
 
 	bool create(uint8_t type); //Clear and set type.

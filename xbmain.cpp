@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	std::string port(TTYMonitor_main);
+	std::thread port(TTYMonitor_main);
 	START = true;
 
 	while (TTYStarted == false) {}
@@ -111,9 +111,9 @@ void slaveMain(std::string m)
 		{
 			rcvdPacket rp;
 			xb.rcvPkt(rp);
-			if (rp.pType == APIid_ATRP)
+			if (rp.pType == APIid_RP)
 			{
-				if (rp.data[0] & (1<<SSRPT_videoRequest)
+				if (rp.data[0] & (1<<SSRPT_videoRequest))
 				{
 					std::cout << "Received video request. Starting to buffer.\n";
 					system("raspivid -w 320 -h 240 -fps 15 -t 1000 -b 20000 -o outVideo");
@@ -124,7 +124,7 @@ void slaveMain(std::string m)
 						uint8_t byte;
 						std::vector<uint8_t> v;
 						int n = read(fd, &byte, 1);
-						if (n == 1 && v.size < 71) v.push_back(byte);
+						if (n == 1 && v.size() < 71) v.push_back(byte);
 						if (n == 0 || v.size() == 70)
 						{
 							SSRPacketCreator outgoingPacket(SSRPT_videoPacket);
@@ -158,7 +158,7 @@ void masterMain(std::string m)
 	while (!(STOP))
 	{
 		ATNDResend.reset();
-		xb.ATND();
+		xb.ATNDPkt();
 		xb.sendPkt();
 
 		while (videoBuffer.size()) videoBuffer.pop();
@@ -185,7 +185,7 @@ void masterMain(std::string m)
 
 		if (GOTNEIGHBOR)
 		{
-			if (neighborIndex < NMAP.neighborCount() && NMAP.neighborCount > 0)
+			if (neighborIndex < NMAP.neighborCount() && NMAP.neighborCount() > 0)
 			{
 				currentNeighbor = NMAP[neighborIndex];
 
@@ -283,7 +283,7 @@ void masterMain(std::string m)
 				}
 
 				neighborIndex++;
-				if (neighborIndex >= NMAP.neighborCount) neighborIndex = 0;
+				if (neighborIndex >= NMAP.neighborCount()) neighborIndex = 0;
 
 				if (NMAP_stopwatch.read() >= (120*1000) && NMAP.neighborCount() > 0)
 				{
@@ -319,7 +319,7 @@ bool SSRPacketCreator::load(std::vector<uint8_t> p)
 
 bool SSRPacketCreator::check(void)
 {
-	if (_p.size < 71) return true;
+	if (_p.size() < 71) return true;
 	else return false;
 }
 
