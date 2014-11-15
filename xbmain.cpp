@@ -193,6 +193,8 @@ void masterMain(std::string m)
 			if (NMAP.neighborCount()) GOTNEIGHBOR = true;
 		}
 
+		if (GOTNEIGHBOR == false) std::cout << "Network map response timed out.\n";
+
 		if (GOTNEIGHBOR)
 		{
 			printf("GOTNEIGHBOR is true, index = %d, count = %d\n", neighborIndex, NMAP.neighborCount());
