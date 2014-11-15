@@ -183,33 +183,59 @@ void masterMain(std::string m)
 				{
 					if(pkt.ATCmd[0] == 'N' && pkt.ATCmd[1] == 'D')
 					{
+						std::cout << "Neighbor responded to map request.\n";
 						NMAP.update(pkt.from);
 						GOTNEIGHBOR = true;
 					}
 				}
 			}
+
+			if (NMAP.neighborCount()) GOTNEIGHBOR = true;
 		}
 
 		if (GOTNEIGHBOR)
 		{
+			printf("GOTNEIGHBOR is true, index = %d, count = %d\n", neighborIndex, NMAP.neighborCount());
 			if (neighborIndex < NMAP.neighborCount() && NMAP.neighborCount() > 0)
 			{
 				currentNeighbor = NMAP[neighborIndex];
 
 				SSRPacketCreator outgoingPacket(SSRPT_videoRequest);
-
+				currentNeighbor = 0x000000000000FFFF;
 				xb.makeUnicastPkt(currentNeighbor);
 				xb.loadUnicastPkt(outgoingPacket.get());
-				xb.sendPkt();
+				printf("SSR message type: 0x%x\n", outgoingPacket.get()[0]);
+				if (xb.sendPkt() == false) std::cout << "Packet transmission failure.\n";
 
+				//Need to get the acknowledgement status
+				stopwatch TS_stopwatch;
+				while (!(xb.pktAvailable()) && TS_stopwatch.read() <= 10*1000)
+				{
+					rcvdPacket rp;
+					xb.rcvPkt(rp);
+					if (rp.pType == APIid_TS)
+					{
+						std::cout << "Transmit status received.\n";
+						printf("Status is: 0x%f\n", rp.deliveryStatus);
+					}
+
+					//else std::cout << "other packet type received.\n";
+				}
+
+				if (TS_stopwatch.read() > 10*1000) std::cout << "Timeout on TS message.\n";
+				std::cout << "Sending video request to neighbor with address:\n";
+				printf("%x--%x--%x--%x--%x--%x--%x--%x\n", currentNeighbor[0], currentNeighbor[1], 
+					currentNeighbor[2], currentNeighbor[3], currentNeighbor[4], currentNeighbor[5],
+					currentNeighbor[6], currentNeighbor[7]);
 				stopwatch videoTimeout;
 
 				bool KEEPWAITING = true;
 				bool FULLSEGMENT = false;
-
+				
+				std::cout << "Entering wait loop for video.\n";
 				while(KEEPWAITING)
 				{
-					if (videoTimeout.read() >= 10*1000) 
+					if (videoTimeout.read() >= 60*1000) 
 					{
 						KEEPWAITING = false;
 						while (videoBuffer.size()) videoBuffer.pop();
@@ -233,7 +259,7 @@ void masterMain(std::string m)
 								}
 							}
 
-							else if (pkt.pType == APIid_RP && pkt.from == currentNeighbor)
+							else if (pkt.pType == APIid_RP)
 							{
 								if (pkt.data[0] & (1<<SSRPT_videoPacket))
 								{
