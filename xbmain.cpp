@@ -167,7 +167,7 @@ void masterMain(std::string m)
 		ATNDResend.reset();
 		xb.ATNDPkt();
 		xb.sendPkt();
-
+		std::cout << "Sent ND command.\n";
 		while (videoBuffer.size()) videoBuffer.pop();
 
 		bool GOTNEIGHBOR = false;
