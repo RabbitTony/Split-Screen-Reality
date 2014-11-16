@@ -720,16 +720,19 @@ bool xbeeNeighbors::update(const address64 &adr)
 		return true;
 	}
 
-	bool check = true;
+	bool FOUND = false;
+
 	std::vector<address64>::iterator it = _neighbors.begin();
-	while(check == true && it != _neighbors.end())
+
+	while (FOUND == false && it != _neighbors.end())
 	{
-		if(adr == *it) check == false;
+		if (adr == *it) FOUND = true;
 		it++;
 	}
 
-	if (check) _neighbors.push_back(adr);
-	else return false;
+	if (FOUND) return false;
+	
+	_neighbors.push_back(adr);
 
 	return true;
 }

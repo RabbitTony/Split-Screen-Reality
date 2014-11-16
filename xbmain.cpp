@@ -198,12 +198,16 @@ void masterMain(std::string m)
 		if (GOTNEIGHBOR)
 		{
 			printf("GOTNEIGHBOR is true, index = %d, count = %d\n", neighborIndex, NMAP.neighborCount());
+			for (int i = 0; i < NMAP.neighborCount(); i++)
+			{
+				address64 t = NMAP[i];
+				printf("%X:%X:%X:%X:%X:%X:%X:%X\n", t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
+			}
 			if (neighborIndex < NMAP.neighborCount() && NMAP.neighborCount() > 0)
 			{
 				currentNeighbor = NMAP[neighborIndex];
 
 				SSRPacketCreator outgoingPacket(SSRPT_videoRequest);
-				currentNeighbor = 0x000000000000FFFF;
 				xb.makeUnicastPkt(currentNeighbor);
 				xb.loadUnicastPkt(outgoingPacket.get());
 				printf("SSR message type: 0x%x\n", outgoingPacket.get()[0]);
@@ -265,11 +269,11 @@ void masterMain(std::string m)
 							{
 								if (pkt.data[0] & (1<<SSRPT_videoPacket))
 								{
-									//std::cout << "Received a video packet from current neighbor.\n";
+									std::cout << "Received a video packet from current neighbor.\n";
 									videoTimeout.reset();
 									pkt.data.erase(pkt.data.begin());
 									videoBuffer.push(pkt.data);
-									if (pkt.data.size() < 71)
+									if (pkt.data.size() < 70)
 									{
 										KEEPWAITING = false;
 										FULLSEGMENT = true;
@@ -288,7 +292,7 @@ void masterMain(std::string m)
 
 				if (FULLSEGMENT)
 				{
-					int fd = open("inVideo", O_WRONLY | O_CREAT);
+					int fd = open("inVideo", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 					if (fd <= 0) 
 					{
 						std::cout << "Video received but found file opening failure.\n";
@@ -296,7 +300,8 @@ void masterMain(std::string m)
 					}
 
 					else
-					{
+					{ 
+						std::cout << "**********GOT VIDEO AND PLAYING IT****************\n";
 						while (videoBuffer.size())
 						{
 							std::vector<uint8_t> v = videoBuffer.front();
@@ -311,7 +316,8 @@ void masterMain(std::string m)
 
 						close(fd);
 
-						system("omxplayer -f 15 inVideo");
+						system("omxplayer --fps 15 inVideo");
+						system("rm inVideo");
 					}
 
 					
