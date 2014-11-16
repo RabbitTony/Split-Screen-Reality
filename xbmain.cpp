@@ -357,7 +357,7 @@ void masterMain(std::string m)
 						close(fd);
 
 						system("omxplayer --fps 20 inVideo");
-						system("cp inVideo inVideo.bak")
+						system("cp inVideo inVideo.bak");
 						system("rm inVideo");
 					}
 				}
