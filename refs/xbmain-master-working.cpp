@@ -58,6 +58,8 @@ int main(int argc, char* argv[])
 	if (SLAVEMODE) slaveMain(modem);
 	else masterMain(modem);
 
+	STOP = true;
+
 	if (port.joinable()) port.join();
 
 	std::cout << "All threads ended nicely.\n";
@@ -123,15 +125,14 @@ void slaveMain(std::string m)
 				if (rp.data[0] & (1<<SSRPT_videoRequest))
 				{
 					std::cout << "Received video request. Starting to buffer.\n";
-					system("raspivid -w 320 -h 240 -fps 20 -t 2000 -b 15000 -o outVideo");
-					//system("raspistill -w 320 -h 240 -q 1 -o outVideo");
+					system("raspivid -w 320 -h 240 -fps 20 -t 2000 -o outVideo");
 					int fd = open("outVideo", O_RDONLY);
 					if (fd <= 0) std::cout << "ERROR OPENING OUTGOING VIDEO FILE.\n";
 					bool GO = true;
 					std::vector<uint8_t> v;
 					while (GO)
 					{
-						char byte;
+						uint8_t byte;
 						int n = read(fd, &byte, 1);
 						if (n == 1 && v.size() < 70) v.push_back(byte);
 						if (n == 0 || v.size() == 70)
@@ -163,12 +164,11 @@ void slaveMain(std::string m)
 
 									if (REDO)
 									{
-										printf("Packet transmission error: 0x%X -- retrying.\n", rp.deliveryStatus);
 										xb.sendPkt();
 										REDO = false;
 									}
 								}
-
+									
 								if (rsend_stopwatch.read() > 10*1000) 
 								{
 									std::cout << "Timeout on packet sending, giving up.\n";
@@ -310,8 +310,11 @@ void masterMain(std::string m)
 								if (pkt.data[0] & (1<<SSRPT_videoPacket))
 								{
 									std::cout << "Received a video packet from current neighbor.\n";
-									videoTimeout.reset();
 									pkt.data.erase(pkt.data.begin());
+									videoTimeout.reset();
+									//for (std::vector<uint8_t>::iterator it = pkt.data.begin(); it != pkt.data.end(); it++)
+									//		std::cout << ":" << *it << ":";
+									//std::cout << "\n";
 									videoBuffer.push(pkt.data);
 									if (pkt.data.size() < 70)
 									{
@@ -350,16 +353,18 @@ void masterMain(std::string m)
 							for (std::vector<uint8_t>::iterator it = v.begin(); it != v.end(); it++)
 							{
 								byte = *it;
+								//std::cout << "-" << byte << "-";
 								write(fd, &byte,1);
 							}
 						}
-
 						close(fd);
 
-						system("omxplayer --fps 20 inVideo");
-						system("cp inVideo inVideo.bak")
+						system("omxplayer --fps 15 inVideo");
+						system("cp inVideo inVideo.bak");
 						system("rm inVideo");
 					}
+
+					
 				}
 
 				neighborIndex++;
