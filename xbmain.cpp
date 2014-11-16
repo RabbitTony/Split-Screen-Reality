@@ -111,15 +111,17 @@ int main(int argc, char *argv[])
 		{
 			if(xb.rcvPkt(pkt) == APIid_TS)
 			{
-				std::cout << "TS status received:\n";
+				std::cout << "***TS status received***\n";
 				printf("Retry count: %d\n", pkt.txRetryCount);
 				printf("Delivery status: 0x%X\n", pkt.deliveryStatus);
-				xb.zeroPktStruct(pkt);
 			}
 			else
 			{
-				std::cout << "Non-TS packet type received.\n";
+				std::cout << "***Non-TS packet type received***\n";
+				printf("Type: 0x%X\n", pkt.pType);
 			}
+
+			xb.zeroPktStruct(pkt);
 		}
 		time(&check);
 	}
@@ -243,7 +245,7 @@ int main(int argc, char *argv[])
 void w_tty(void)
 {
 	TTYserial tty;
-	tty.begin(modem, 38400);
+	tty.begin(modem, 57600);
 	
 	if (!(tty.status()))
 	{
