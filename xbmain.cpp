@@ -109,13 +109,13 @@ void TTYMonitor_main(void)
 
 void slaveMain(std::string m)
 {
-
-	xbeeDMapi xb;
-
+xbeeDMapi xb;
+	std::cout << "Entering slave infinite loop.\n";
 	while (!(STOP))
 	{
 		if (xb.pktAvailable())
 		{
+			std::cout << "Packet received.\n";
 			rcvdPacket rp;
 			xb.rcvPkt(rp);
 			if (rp.pType == APIid_RP)
@@ -125,20 +125,25 @@ void slaveMain(std::string m)
 					std::cout << "Received video request. Starting to buffer.\n";
 					system("raspivid -w 320 -h 240 -fps 15 -t 1000 -b 20000 -o outVideo");
 					int fd = open("outVideo", O_RDONLY);
+					if (fd <= 0) std::cout << "ERROR OPENING OUTGOING VIDEO FILE.\n";
 					bool GO = true;
+					std::vector<uint8_t> v;
 					while (GO)
 					{
 						uint8_t byte;
-						std::vector<uint8_t> v;
 						int n = read(fd, &byte, 1);
-						if (n == 1 && v.size() < 71) v.push_back(byte);
+						std::cout << "in slave video reading function, after read, n is " << n << std::endl;
+						if (n == 1 && v.size() < 70) v.push_back(byte);
 						if (n == 0 || v.size() == 70)
 						{
 							SSRPacketCreator outgoingPacket(SSRPT_videoPacket);
 							outgoingPacket.load(v);
+							if (outgoingPacket.check() == false) std::cout << "Packet to big.\n";
 							xb.makeUnicastPkt(rp.from);
 							xb.loadUnicastPkt(outgoingPacket.get());
 							xb.sendPkt();
+							std::cout << "Video packet of size " << v.size() << " being sent.\n";
+							v.clear();
 						}
 
 						if (n == 0) 
@@ -148,6 +153,7 @@ void slaveMain(std::string m)
 						}
 					}
 				}
+				else std::cout << "Unknown packet type received.\n";
 			}
 		}
 	}
