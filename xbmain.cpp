@@ -141,9 +141,6 @@ xbeeDMapi xb;
 							if (outgoingPacket.check() == false) std::cout << "Packet to big.\n";
 							xb.makeUnicastPkt(rp.from);
 							xb.loadUnicastPkt(outgoingPacket.get());
-
-							std::cout << std::endl;
-
 							xb.sendPkt();
 							bool DONE = false;
 							bool REDO = false;
