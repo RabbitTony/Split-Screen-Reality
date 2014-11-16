@@ -123,14 +123,15 @@ xbeeDMapi xb;
 				if (rp.data[0] & (1<<SSRPT_videoRequest))
 				{
 					std::cout << "Received video request. Starting to buffer.\n";
-					system("raspivid -w 320 -h 240 -fps 20 -t 2000 -o outVideo");
+					system("raspivid -w 320 -h 240 -fps 15 -t 2000 -o outVideo");
+					//system("raspistill -w 320 -h 240 -q 1 -o outVideo");
 					int fd = open("outVideo", O_RDONLY);
 					if (fd <= 0) std::cout << "ERROR OPENING OUTGOING VIDEO FILE.\n";
 					bool GO = true;
 					std::vector<uint8_t> v;
 					while (GO)
 					{
-						uint8_t byte;
+						char byte;
 						int n = read(fd, &byte, 1);
 						if (n == 1 && v.size() < 70) v.push_back(byte);
 						if (n == 0 || v.size() == 70)
@@ -140,6 +141,9 @@ xbeeDMapi xb;
 							if (outgoingPacket.check() == false) std::cout << "Packet to big.\n";
 							xb.makeUnicastPkt(rp.from);
 							xb.loadUnicastPkt(outgoingPacket.get());
+
+							std::cout << std::endl;
+
 							xb.sendPkt();
 							bool DONE = false;
 							bool REDO = false;
@@ -309,6 +313,10 @@ void masterMain(std::string m)
 								{
 									std::cout << "Received a video packet from current neighbor.\n";
 									videoTimeout.reset();
+									for (std::vector<uint8_t>::iterator it = pkt.data.begin();
+										it != pkt.data.end(); it++)
+										std::cout << ":" << *it << ":";
+									std::cout << "\n";
 									pkt.data.erase(pkt.data.begin());
 									videoBuffer.push(pkt.data);
 									if (pkt.data.size() < 70)
@@ -344,10 +352,10 @@ void masterMain(std::string m)
 						{
 							std::vector<uint8_t> v = videoBuffer.front();
 							videoBuffer.pop();
-							uint8_t byte = 0x00;
+							char byte = 0x00;
 							for (std::vector<uint8_t>::iterator it = v.begin(); it != v.end(); it++)
 							{
-								byte = v.front();
+								byte = *it;
 								write(fd, &byte,1);
 							}
 						}
