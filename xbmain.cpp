@@ -124,7 +124,6 @@ void slaveMain(std::string m)
 				{
 					std::cout << "Received video request. Starting to buffer.\n";
 					system("raspivid -w 320 -h 240 -fps 20 -t 2000 -b 15000 -o outVideo");
-					//system("raspistill -w 320 -h 240 -q 1 -o outVideo");
 					int fd = open("outVideo", O_RDONLY);
 					if (fd <= 0) std::cout << "ERROR OPENING OUTGOING VIDEO FILE.\n";
 					bool GO = true;
@@ -183,7 +182,6 @@ void slaveMain(std::string m)
 							GO = false;
 							close(fd);
 							system("mv outVideo outVideo.bak");
-							system("rm -f outVideo");
 						}
 					}
 				}

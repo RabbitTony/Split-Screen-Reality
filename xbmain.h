@@ -9,7 +9,8 @@
 #include <string>
 #include <cstdint>
 
-//Global variables, flags, FIFOs, etc. 
+//Global variables, flags, FIFOs, etc.
+
 std::string modem = "/dev/ttyAMA0";
 address64 lastNeighbor, currentNeighbor, nextNeighbor;
 int neighborIndex = 0;
@@ -52,7 +53,7 @@ public:
 
 	bool create(uint8_t type); //Clear and set type.
 	bool load(std::vector<uint8_t> p); //Add payload to what is currently stored. 
-	bool check(void); //Ensure total size is less than or equal to 72 bytes. 
+	bool check(void); //Ensure total size is less than or equal to 71 bytes. 
 	std::vector<uint8_t> get(void); //Get the vector to send out as an XB packet. 
 };
 
