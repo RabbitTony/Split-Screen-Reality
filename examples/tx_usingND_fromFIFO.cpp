@@ -91,26 +91,6 @@ int main(int argc, char *argv[])
 	rcvdPacket pkt;
 	xb.zeroPktStruct(pkt);
 
-	while (difftime(check,start) <= 3.00)
-	{
-		if (xb.pktAvailable())
-		{
-			if(xb.rcvPkt(pkt) == APIid_TS)
-			{
-				std::cout << "***TS status received***\n";
-				printf("Retry count: %d\n", pkt.txRetryCount);
-				printf("Delivery status: 0x%X\n", pkt.deliveryStatus);
-			}
-			else
-			{
-				std::cout << "***Non-TS packet type received***\n";
-				printf("Type: 0x%X\n", pkt.pType);
-			}
-
-			xb.zeroPktStruct(pkt);
-		}
-		time(&check);
-	}
 	clock_t timerstart, timerstop;
 	
 	//////Open the buffer
@@ -238,7 +218,7 @@ int main(int argc, char *argv[])
 void w_tty(void)
 {
 	TTYserial tty;
-	tty.begin(modem, 57600);
+	tty.begin(modem, 38400);
 	
 	if (!(tty.status()))
 	{

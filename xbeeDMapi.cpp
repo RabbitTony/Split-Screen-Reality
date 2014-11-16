@@ -151,14 +151,11 @@ bool xbeeDMapi::pktAvailable()
 	bool result = false;
 	if (_processedPktCount > 0) result = true;
 	
-	inBytesMutex.lock();
 	//Now we are going to check to make sure we have enough bytes in inBytes for a complete packet. 
 	if (inBytes.size() <= 5)
 	{
-		inBytesMutex.unlock();
 		return result;
 	}
-	inBytesMutex.unlock();
 
 	//The following section checks the inBytes buffer for a complete packet
 	// and if it finds one, it moves it to the rcvdBytes buffer for later processing.
@@ -365,6 +362,7 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 	if (it == rcvdBytes.end())
 	{
 		pkt.badlength = true;
+		_processedPktCount--;
 		return 0;
 	}
 
@@ -490,7 +488,8 @@ uint8_t xbeeDMapi::rcvPkt(rcvdPacket &pkt)
 		pkt.from[7] = tbuffer[8];
 		//Receive options
 		pkt.receiveOpts = tbuffer[11];
-
+		//Data length
+		pkt.length = (uint8_t)(tbuffer.size() - 13);
 		//Load the data:
 		for (int i = 12; i < (tbuffer.size() -1); i++)
 		{
@@ -625,7 +624,6 @@ bool xbeeDMapi::sendPkt()
 {
 	if (_pMade == false || _pLoaded == false) 
 	{
-		clearPktData();
 		return false;
 	}
 
@@ -693,8 +691,6 @@ bool xbeeDMapi::sendPkt()
 	}
 	outBytesMutex.unlock();
 
-	_pLoaded = false;
-	_pMade = false;
 	return true;
 }
 

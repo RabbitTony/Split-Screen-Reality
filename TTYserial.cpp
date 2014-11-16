@@ -60,6 +60,11 @@ bool TTYserial::begin(std::string modem, int baud)
 		cfsetospeed(&new_ts, B57600);
 		cfsetispeed(&new_ts, B57600);
 	}
+	else if (baud == 115200)
+	{
+		cfsetospeed(&new_ts, B115200);
+		cfsetispeed(&new_ts, B115200);
+	}
 	else
 	{
 		cfsetospeed(&new_ts, B9600);

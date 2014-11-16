@@ -116,7 +116,7 @@ class xbeeDMapi
 	public:
 		bool pktAvailable(); // Check for available packets & move data from inbytes into rcvdBytes. 
 		uint8_t rcvPkt(rcvdPacket&); // process a packet from rcvdBytes and return the type. . 
-		void zeroPktStruct(rcvdPacket&); //Set all fields to zero for a packet struct. 
+		static void zeroPktStruct(rcvdPacket&); //Set all fields to zero for a packet struct. 
 		bool makeBCPkt(uint8_t fID = 0x01); // Prep a broadcast packet (IE fill in the byte fields)
 		bool loadBCPkt(const std::vector<uint8_t>&); // Load data into the broadcast packet;
 		bool makeUnicastPkt(const address64&, uint8_t fID = 0x01); //Make a unicast packet and address it.
