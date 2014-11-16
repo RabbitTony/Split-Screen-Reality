@@ -123,7 +123,7 @@ xbeeDMapi xb;
 				if (rp.data[0] & (1<<SSRPT_videoRequest))
 				{
 					std::cout << "Received video request. Starting to buffer.\n";
-					system("raspivid -w 320 -h 240 -fps 15 -t 1000 -b 20000 -o outVideo");
+					system("raspivid -w 320 -h 240 -fps 20 -t 2000 -o outVideo");
 					int fd = open("outVideo", O_RDONLY);
 					if (fd <= 0) std::cout << "ERROR OPENING OUTGOING VIDEO FILE.\n";
 					bool GO = true;
@@ -132,7 +132,6 @@ xbeeDMapi xb;
 					{
 						uint8_t byte;
 						int n = read(fd, &byte, 1);
-						std::cout << "in slave video reading function, after read, n is " << n << std::endl;
 						if (n == 1 && v.size() < 70) v.push_back(byte);
 						if (n == 0 || v.size() == 70)
 						{
@@ -142,7 +141,38 @@ xbeeDMapi xb;
 							xb.makeUnicastPkt(rp.from);
 							xb.loadUnicastPkt(outgoingPacket.get());
 							xb.sendPkt();
-							std::cout << "Video packet of size " << v.size() << " being sent.\n";
+							bool DONE = false;
+							bool REDO = false;
+							stopwatch rsend_stopwatch;
+							while (DONE == false)
+							{
+								if (xb.pktAvailable())
+								{
+									rcvdPacket rp;
+									xb.rcvPkt(rp);
+									if (rp.pType == APIid_TS) 
+									{
+										if (rp.deliveryStatus == 0x00)
+										{
+											DONE = true;
+											std::cout << "Good packet sent.\n";
+										}
+										else REDO = true;
+									}
+
+									if (REDO)
+									{
+										xb.sendPkt();
+										REDO = false;
+									}
+								}
+
+								if (rsend_stopwatch.read() > 10*1000) 
+								{
+									std::cout << "Timeout on packet sending, giving up.\n";
+									DONE = true;
+								}
+							}
 							v.clear();
 						}
 
@@ -150,6 +180,8 @@ xbeeDMapi xb;
 						{
 							GO = false;
 							close(fd);
+							system("mv outVideo outVideo.bak");
+							system("rm -f outVideo");
 						}
 					}
 				}
