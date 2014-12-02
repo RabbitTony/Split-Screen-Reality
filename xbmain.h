@@ -27,7 +27,8 @@ bool STOP = false;
 bool START = false;
 bool TTYStarted = false;
 bool TTYStartFailed = false;
-bool currentlyPlayingVideo = false;
+volatile bool currentlyPlayingVideo = false;
+volatile bool NEXTVIDEO = false;
 
 //Functions and Classes
 
@@ -35,6 +36,7 @@ void TTYMonitor_main(void);
 void slaveMain(std::string m);
 void masterMain(std::string m);
 void checkIfVideoPlaying_thread(void);
+void checkUserInput_thread(void);
 
 class SSRPacketCreator 
 {

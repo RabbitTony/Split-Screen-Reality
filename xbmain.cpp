@@ -48,6 +48,7 @@ int main(int argc, char* argv[])
 	std::cout << "Starting TTY thread with: " << modem << " / " << baud << std::endl;
 	std::thread port(TTYMonitor_main);
 	std::thread videoPlayingMonitor(checkIfVideoPlaying_thread);
+	std::thread UIMonitor(checkUserInput_thread);
 
 	START = true;
 
@@ -65,6 +66,7 @@ int main(int argc, char* argv[])
 
 	if (videoPlayingMonitor.joinable()) videoPlayingMonitor.join();
 	if (port.joinable()) port.join();
+	if (UIMonitor.joinable()) UIMonitor.join();
 
 	std::cout << "All threads ended nicely.\n";
 	return 0;
@@ -242,6 +244,9 @@ void masterMain(std::string m)
 
 		if (GOTNEIGHBOR) // We found a neighbor, now we start the looping through asking for video. 
 		{
+			while (NEXTVIDEO == false) {} // Wait for the user to press a button to move to the next video. 
+			NEXTVIDEO = true; // Reset the flag for the next loop. 
+
 			printf("GOTNEIGHBOR is true, index = %d, count = %d\n", neighborIndex, NMAP.neighborCount());
 			// This loop could be replaced to work with Pi-Game for selecting which neighbor to select a video from. . . 
 			for (int i = 0; i < NMAP.neighborCount(); i++) // Print out the neighbors for debugging purposes. 
@@ -315,7 +320,7 @@ void masterMain(std::string m)
 							{
 								if (pkt.data[0] & (1<<SSRPT_videoPacket))
 								{
-									std::cout << "Received a video packet from current neighbor.\n";
+									//std::cout << "Received a video packet from current neighbor.\n";
 									videoTimeout.reset();
 									pkt.data.erase(pkt.data.begin());
 									videoBuffer.push(pkt.data);
@@ -448,4 +453,30 @@ void checkIfVideoPlaying_thread(void)
 	}
 
 	close(fd);
+}
+
+void checkUserInput_thread(void)
+{
+	while (!(START)) {}
+
+	int fd = -1;
+	while (fd <= 0)
+	{
+		fd = open("uififo.fifo", O_RDONLY);
+		if (fd <= 0) std::cout << "Error opening uififo.fifo\n";
+	}
+	
+	while (!(STOP))
+	{
+		int n;
+		char b;
+		n = read(fd,&b,1);
+		if (n == 1)
+		{
+			if (b == 'n') NEXTVIDEO = true;
+		}
+	}
+
+	close (fd);
+	return;
 }

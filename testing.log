@@ -1,2 +1,2 @@
-Test 1: FBCP and running omxplayer in the background. 
-
+Test 1: FBCP and running omxplayer in the background.  --- Success. 
+Test 2: Trying to use Pygame to control program execution. 
