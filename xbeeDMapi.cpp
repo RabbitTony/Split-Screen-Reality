@@ -720,16 +720,19 @@ bool xbeeNeighbors::update(const address64 &adr)
 		return true;
 	}
 
-	bool check = true;
+	bool FOUND = false;
+
 	std::vector<address64>::iterator it = _neighbors.begin();
-	while(check == true && it != _neighbors.end())
+
+	while (FOUND == false && it != _neighbors.end())
 	{
-		if(adr == *it) check == false;
+		if (adr == *it) FOUND = true;
 		it++;
 	}
 
-	if (check) _neighbors.push_back(adr);
-	else return false;
+	if (FOUND) return false;
+	
+	_neighbors.push_back(adr);
 
 	return true;
 }
@@ -739,8 +742,36 @@ int xbeeNeighbors::neighborCount()
 	return _neighbors.size();
 }
 
+int xbeeNeighbors::numberOfNeighbor(const address64 &adr)
+{
+	if (_neighbors.empty()) return -1;
+
+	int num = 0;
+	bool found = false;
+	std::vector<address64>::iterator it = _neighbors.begin();
+	while (it != _neighbors.end())
+	{
+		if (adr == *it) 
+		{
+			return num;
+			found = true;
+		}
+		num++;
+		it++;
+	}
+
+	if (found == false) return -1;
+	return -2;
+}
+
 address64& xbeeNeighbors::operator[](const int index)
 {
+	
+	if (_neighbors.size() <= 0)
+	{
+		address64 ra;
+		ra = 0x00;
+	}
 	if (index < 0) return _neighbors[0];
 	if (index >= _neighbors.size()) return _neighbors[_neighbors.size()-1];
 

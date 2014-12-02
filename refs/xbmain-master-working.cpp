@@ -15,11 +15,8 @@
 #include <queue>
 #include <cstdint>
 #include <string>
+#include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
 
 
 int main(int argc, char* argv[])
@@ -47,9 +44,6 @@ int main(int argc, char* argv[])
 
 	std::cout << "Starting TTY thread with: " << modem << " / " << baud << std::endl;
 	std::thread port(TTYMonitor_main);
-	std::thread videoPlayingMonitor(checkIfVideoPlaying_thread);
-	std::thread UIMonitor(checkUserInput_thread);
-
 	START = true;
 
 	while (TTYStarted == false) {}
@@ -64,9 +58,9 @@ int main(int argc, char* argv[])
 	if (SLAVEMODE) slaveMain(modem);
 	else masterMain(modem);
 
-	if (videoPlayingMonitor.joinable()) videoPlayingMonitor.join();
+	STOP = true;
+
 	if (port.joinable()) port.join();
-	if (UIMonitor.joinable()) UIMonitor.join();
 
 	std::cout << "All threads ended nicely.\n";
 	return 0;
@@ -131,14 +125,14 @@ void slaveMain(std::string m)
 				if (rp.data[0] & (1<<SSRPT_videoRequest))
 				{
 					std::cout << "Received video request. Starting to buffer.\n";
-					system("raspivid -w 320 -h 240 -fps 20 -t 4000 -b 20000 -o outVideo");
+					system("raspivid -w 320 -h 240 -fps 20 -t 2000 -o outVideo");
 					int fd = open("outVideo", O_RDONLY);
 					if (fd <= 0) std::cout << "ERROR OPENING OUTGOING VIDEO FILE.\n";
 					bool GO = true;
 					std::vector<uint8_t> v;
 					while (GO)
 					{
-						char byte;
+						uint8_t byte;
 						int n = read(fd, &byte, 1);
 						if (n == 1 && v.size() < 70) v.push_back(byte);
 						if (n == 0 || v.size() == 70)
@@ -170,12 +164,11 @@ void slaveMain(std::string m)
 
 									if (REDO)
 									{
-										printf("Packet transmission error: 0x%X -- retrying.\n", rp.deliveryStatus);
 										xb.sendPkt();
 										REDO = false;
 									}
 								}
-
+									
 								if (rsend_stopwatch.read() > 10*1000) 
 								{
 									std::cout << "Timeout on packet sending, giving up.\n";
@@ -190,6 +183,7 @@ void slaveMain(std::string m)
 							GO = false;
 							close(fd);
 							system("mv outVideo outVideo.bak");
+							system("rm -f outVideo");
 						}
 					}
 				}
@@ -210,7 +204,6 @@ void masterMain(std::string m)
 
 	while (!(STOP))
 	{
-		//First thing: send a network map request. 
 		ATNDResend.reset();
 		xb.ATNDPkt();
 		xb.sendPkt();
@@ -242,23 +235,19 @@ void masterMain(std::string m)
 
 		if (GOTNEIGHBOR == false) std::cout << "Network map response timed out.\n";
 
-		if (GOTNEIGHBOR) // We found a neighbor, now we start the looping through asking for video. 
+		if (GOTNEIGHBOR)
 		{
-			while (NEXTVIDEO == false) {} // Wait for the user to press a button to move to the next video. 
-			NEXTVIDEO = false; // Reset the flag for the next loop. 
-
 			printf("GOTNEIGHBOR is true, index = %d, count = %d\n", neighborIndex, NMAP.neighborCount());
-			// This loop could be replaced to work with Pi-Game for selecting which neighbor to select a video from. . . 
-			for (int i = 0; i < NMAP.neighborCount(); i++) // Print out the neighbors for debugging purposes. 
+			for (int i = 0; i < NMAP.neighborCount(); i++)
 			{
 				address64 t = NMAP[i];
 				printf("%X:%X:%X:%X:%X:%X:%X:%X\n", t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
 			}
-			if (neighborIndex < NMAP.neighborCount() && NMAP.neighborCount() > 0) //Make sure we are asking for a valid address. 
+			if (neighborIndex < NMAP.neighborCount() && NMAP.neighborCount() > 0)
 			{
 				currentNeighbor = NMAP[neighborIndex];
 
-				SSRPacketCreator outgoingPacket(SSRPT_videoRequest); //setup a video request packet.
+				SSRPacketCreator outgoingPacket(SSRPT_videoRequest);
 				xb.makeUnicastPkt(currentNeighbor);
 				xb.loadUnicastPkt(outgoingPacket.get());
 				printf("SSR message type: 0x%x\n", outgoingPacket.get()[0]);
@@ -279,7 +268,7 @@ void masterMain(std::string m)
 					//else std::cout << "other packet type received.\n";
 				}
 
-				if (TS_stopwatch.read() > 10*1000) std::cout << "Timeout on TS message.\n"; //Let us know if it timed out. Debugging. 
+				if (TS_stopwatch.read() > 10*1000) std::cout << "Timeout on TS message.\n";
 				std::cout << "Sending video request to neighbor with address:\n";
 				printf("%x--%x--%x--%x--%x--%x--%x--%x\n", currentNeighbor[0], currentNeighbor[1], 
 					currentNeighbor[2], currentNeighbor[3], currentNeighbor[4], currentNeighbor[5],
@@ -290,7 +279,7 @@ void masterMain(std::string m)
 				bool FULLSEGMENT = false;
 				
 				std::cout << "Entering wait loop for video.\n";
-				while(KEEPWAITING) // This is the receiving video loop. 
+				while(KEEPWAITING)
 				{
 					if (videoTimeout.read() >= 60*1000) 
 					{
@@ -320,9 +309,12 @@ void masterMain(std::string m)
 							{
 								if (pkt.data[0] & (1<<SSRPT_videoPacket))
 								{
-									//std::cout << "Received a video packet from current neighbor.\n";
-									videoTimeout.reset();
+									std::cout << "Received a video packet from current neighbor.\n";
 									pkt.data.erase(pkt.data.begin());
+									videoTimeout.reset();
+									//for (std::vector<uint8_t>::iterator it = pkt.data.begin(); it != pkt.data.end(); it++)
+									//		std::cout << ":" << *it << ":";
+									//std::cout << "\n";
 									videoBuffer.push(pkt.data);
 									if (pkt.data.size() < 70)
 									{
@@ -343,7 +335,6 @@ void masterMain(std::string m)
 
 				if (FULLSEGMENT)
 				{
-					while(currentlyPlayingVideo) {}
 					int fd = open("inVideo", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 					if (fd <= 0) 
 					{
@@ -362,22 +353,21 @@ void masterMain(std::string m)
 							for (std::vector<uint8_t>::iterator it = v.begin(); it != v.end(); it++)
 							{
 								byte = *it;
+								//std::cout << "-" << byte << "-";
 								write(fd, &byte,1);
 							}
 						}
-
 						close(fd);
 
-						//system("omxplayer --fps 20 inVideo");
-						currentlyPlayingVideo = true;
-						system("mv inVideo currentVideo");
-						system("./playvideo&");
-						//system("cp inVideo inVideo.bak");
-						//system("rm inVideo");
+						system("omxplayer --fps 15 inVideo");
+						system("cp inVideo inVideo.bak");
+						system("rm inVideo");
 					}
+
+					
 				}
 
-				neighborIndex++; // move on to the next neighbor and reset if we are at the end of the list. 
+				neighborIndex++;
 				if (neighborIndex >= NMAP.neighborCount()) neighborIndex = 0;
 
 				if (NMAP_stopwatch.read() >= (120*1000) && NMAP.neighborCount() > 0)
@@ -387,7 +377,7 @@ void masterMain(std::string m)
 				} 
 			}
 
-			else //This should never happen, but just in case. 
+			else 
 			{
 				neighborIndex = 0;
 				std::cout << "neighborIndex was reset to zero. \n";
@@ -431,52 +421,4 @@ std::vector<uint8_t> SSRPacketCreator::get(void)
 	}
 
 	return tv;
-}
-
-void checkIfVideoPlaying_thread(void)
-{
-	// This thread simply watches a fifo and toggles the variable to let the code know to play the next video
-	// this avoids data races. 
-	while(!(START)) {}
-	int fd = open("videoPlayingFIFO", O_RDONLY);
-
-	
-	while(!(STOP))
-	{
-		int n;
-		char b;
-		n = read(fd, &b, 1);
-		if (n == 1)
-		{
-			if (b == 'd') currentlyPlayingVideo = false;
-		}
-	}
-
-	close(fd);
-}
-
-void checkUserInput_thread(void)
-{
-	while (!(START)) {}
-
-	int fd = -1;
-	while (fd <= 0)
-	{
-		fd = open("uififo.fifo", O_RDONLY);
-		if (fd <= 0) std::cout << "Error opening uififo.fifo\n";
-	}
-	
-	while (!(STOP))
-	{
-		int n;
-		char b;
-		n = read(fd,&b,1);
-		if (n == 1)
-		{
-			if (b == 'n') NEXTVIDEO = true;
-		}
-	}
-
-	close (fd);
-	return;
 }

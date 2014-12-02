@@ -1,11 +1,11 @@
 CC=g++
-CFLAGS=-c -std=c++0x -pthread
+CFLAGS=-c -std=c++0x -pthread -lwiringPi -g
 LDFLAGS=
-CF=-std=c++0x -pthread
-SOURCES=xbmain.cpp xbeeDMapi.cpp TTYserial.cpp
+CF=-std=c++0x -pthread -lwiringPi -g
+SOURCES=xbmain.cpp xbeeDMapi.cpp TTYserial.cpp stopwatch.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=xbmain
-HEADERS=xbeeDMapi.h TTYserial.h
+HEADERS=xbeeDMapi.h TTYserial.h stopwatch.h xbmain.h
 HEADEROBJS=$(HEADERS:.h=.o)
 
 
