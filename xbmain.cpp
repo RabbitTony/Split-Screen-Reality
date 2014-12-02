@@ -245,7 +245,7 @@ void masterMain(std::string m)
 		if (GOTNEIGHBOR) // We found a neighbor, now we start the looping through asking for video. 
 		{
 			while (NEXTVIDEO == false) {} // Wait for the user to press a button to move to the next video. 
-			NEXTVIDEO = true; // Reset the flag for the next loop. 
+			NEXTVIDEO = false; // Reset the flag for the next loop. 
 
 			printf("GOTNEIGHBOR is true, index = %d, count = %d\n", neighborIndex, NMAP.neighborCount());
 			// This loop could be replaced to work with Pi-Game for selecting which neighbor to select a video from. . . 

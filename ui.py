@@ -10,9 +10,8 @@ from time import sleep
 import RPi.GPIO as GPIO
 import sys, pygame
 
-setup fifo
 path = "uififo.fifo"
-os.mkfifo(path)
+#os.mkfifo(path)
 
 #Setup the GPIOs as outputs - only 4 and 17 are available
 GPIO.setmode(GPIO.BCM)
@@ -34,14 +33,14 @@ pygame.display.update()
 
 font_big = pygame.font.Font(None, 20)
 
-touch_buttons = {'sellect':(160,140)} #, '4 @ 1/2 sec':(240,40), '17 @ 1 sec':(80,140), '4 @ 1 sec':(240,140), 'all':(160,220)
+#touch_buttons = {'select':(160,140)} #, '4 @ 1/2 sec':(240,40), '17 @ 1 sec':(80,140), '4 @ 1 sec':(240,140), 'all':(160,220)
+#
+#for k,v in touch_buttons.items():
+#    text_surface = font_big.render('%s'%k, True, WHITE)
+#    rect = text_surface.get_rect(center=v)
+#    lcd.blit(text_surface, rect)
 
-for k,v in touch_buttons.items():
-    text_surface = font_big.render('%s'%k, True, WHITE)
-    rect = text_surface.get_rect(center=v)
-    lcd.blit(text_surface, rect)
-
-pygame.display.update()
+#pygame.display.update()
 
 while True:
     # Scan touchscreen events
@@ -59,9 +58,9 @@ while True:
                     GPIO.output(17, True)
 		    		#sleep(.5)
 		    		#GPIO.output(17, False)
-		   			fifo = open(path, "w")
-		   			fifo.write("n")
-		   			fifo.close()
+		    fifo = open(path, "w")
+		    fifo.write("n")
+		    fifo.close()
                 #else: #right half
                     #GPIO.output(4, True)
 		    #sleep(.5)
@@ -81,7 +80,7 @@ while True:
 		#sleep(1)
 		#GPIO.output(17, False)
 		#GPIO.output(4, False)
-#	if event.type == KEYDOWN:
-#	     if event.key == K_ESCAPE:
+	if event.type == KEYDOWN:
+	     if event.key == K_ESCAPE:
 	        sys.exit()
     sleep(0.1)
